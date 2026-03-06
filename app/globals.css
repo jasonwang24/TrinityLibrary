@@ -1,0 +1,28 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --trinity-blue: #125f89;
+  --bright-blue: #08abdb;
+  --faded-gold: #c6af7d;
+  --faded-gold-dark: #967e50;
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --muted: #666666;
+  --border: #e5e7eb;
+  --success: #16a34a;
+  --danger: #dc2626;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+a {
+  color: var(--trinity-blue);
+}

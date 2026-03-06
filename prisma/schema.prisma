@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+enum UserRole {
+  MEMBER
+  MANAGER
+}
+
+enum ResourceType {
+  BOOK
+  EBOOK
+  JOURNAL
+  AUDIOBOOK
+  DVD
+  OTHER
+}
+
+enum CopyStatus {
+  AVAILABLE
+  CHECKED_OUT
+  ON_HOLD
+  LOST
+  DAMAGED
+}
+
+enum HoldStatus {
+  ACTIVE
+  FULFILLED
+  CANCELLED
+  EXPIRED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  role         UserRole   @default(MEMBER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  checkouts    Checkout[]
+  holds        Hold[]
+}
+
+model Resource {
+  id          String       @id @default(cuid())
+  title       String
+  author      String
+  isbn        String?
+  description String?
+  coverImage  String?
+  type        ResourceType @default(BOOK)
+  publisher   String?
+  year        Int?
+  digitalUrl  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  copies      Copy[]
+  tags        ResourceTag[]
+  holds       Hold[]
+
+  @@index([title])
+  @@index([author])
+  @@index([isbn])
+}
+
+model Copy {
+  id         String     @id @default(cuid())
+  resourceId String
+  barcode    String     @unique
+  status     CopyStatus @default(AVAILABLE)
+  condition  String?
+  location   String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  resource   Resource   @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  checkouts  Checkout[]
+
+  @@index([resourceId])
+  @@index([barcode])
+}
+
+model Tag {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  color     String        @default("#6B7280")
+  resources ResourceTag[]
+}
+
+model ResourceTag {
+  resourceId String
+  tagId      String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([resourceId, tagId])
+}
+
+model Checkout {
+  id           String    @id @default(cuid())
+  copyId       String
+  userId       String
+  checkedOutAt DateTime  @default(now())
+  dueDate      DateTime
+  returnedAt   DateTime?
+  renewals     Int       @default(0)
+  copy         Copy      @relation(fields: [copyId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@index([copyId])
+  @@index([userId])
+  @@index([dueDate])
+}
+
+model Hold {
+  id         String     @id @default(cuid())
+  resourceId String
+  userId     String
+  status     HoldStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now())
+  notifiedAt DateTime?
+  resource   Resource   @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@index([resourceId])
+  @@index([userId])
+}

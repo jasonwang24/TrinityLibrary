@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { ArrowLeft, QrCode, Camera, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function ScanPage() {
   const { data: session, status } = useSession();
@@ -11,6 +12,7 @@ export default function ScanPage() {
   const [barcode, setBarcode] = useState("");
   const [mode, setMode] = useState<"checkin" | "checkout">("checkout");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -32,6 +34,7 @@ export default function ScanPage() {
       }
     } catch {
       setMessage("Camera access denied or scanner error");
+      setMessageType("error");
       setScanning(false);
     }
   }
@@ -50,74 +53,136 @@ export default function ScanPage() {
     const data = await res.json();
     if (res.ok) {
       setMessage(`${mode === "checkout" ? "Checked out" : "Checked in"} successfully!`);
+      setMessageType("success");
       setBarcode("");
     } else {
       setMessage(data.error);
+      setMessageType("error");
     }
+    setTimeout(() => setMessage(""), 3000);
   }
 
   if (!session || session.user.role !== "MANAGER") return null;
 
   return (
-    <main style={{ maxWidth: 500, margin: "0 auto", padding: "2rem" }}>
-      <Link href="/manager" style={{ color: "#125f89", marginBottom: "1rem", display: "inline-block" }}>
-        &larr; Manager Panel
-      </Link>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Barcode Scanner</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Link
+          href="/manager"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-medium"
+        >
+          <ArrowLeft size={20} />
+          Back to Manage
+        </Link>
 
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
-        <button
-          onClick={() => setMode("checkout")}
-          style={{ ...tabStyle, background: mode === "checkout" ? "#125f89" : "#e5e7eb", color: mode === "checkout" ? "white" : "black" }}
-        >
-          Check Out
-        </button>
-        <button
-          onClick={() => setMode("checkin")}
-          style={{ ...tabStyle, background: mode === "checkin" ? "#125f89" : "#e5e7eb", color: mode === "checkin" ? "white" : "black" }}
-        >
-          Check In
-        </button>
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <div className="bg-blue-100 text-blue-600 rounded-full p-4">
+              <QrCode size={48} />
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Barcode Scanner</h1>
+          <p className="text-gray-600">
+            Scan a book&apos;s barcode to check it in or out
+          </p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex gap-2 mb-6 bg-gray-100 rounded-lg p-1 max-w-xs mx-auto">
+            <button
+              onClick={() => setMode("checkout")}
+              className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                mode === "checkout"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Check Out
+            </button>
+            <button
+              onClick={() => setMode("checkin")}
+              className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                mode === "checkin"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Check In
+            </button>
+          </div>
+
+          {message && (
+            <div className={`mb-4 px-4 py-3 rounded-lg flex items-center gap-2 ${
+              messageType === "success"
+                ? "bg-green-50 border border-green-200 text-green-800"
+                : "bg-red-50 border border-red-200 text-red-800"
+            }`}>
+              {messageType === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+              <span>{message}</span>
+            </div>
+          )}
+
+          <div className="mb-6">
+            {scanning ? (
+              <video ref={videoRef} className="w-full max-w-md mx-auto rounded-lg" />
+            ) : (
+              <div className="aspect-square max-w-md mx-auto bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                <div className="text-center">
+                  <Camera className="mx-auto text-gray-400 mb-4" size={64} />
+                  <p className="text-gray-600 mb-4">Camera preview will appear here</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 justify-center mb-6">
+            <button
+              onClick={startScanner}
+              disabled={scanning}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <Camera size={20} />
+              {scanning ? "Scanning..." : "Start Scanning"}
+            </button>
+          </div>
+
+          <div className="border-t border-gray-200 pt-6">
+            <p className="text-sm font-medium text-gray-700 mb-3 text-center">Or enter barcode manually</p>
+            <form onSubmit={handleSubmit} className="flex gap-3 max-w-md mx-auto">
+              <input
+                placeholder="Enter barcode..."
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+              />
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                {mode === "checkout" ? "Check Out" : "Check In"}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">How to Use</h2>
+          <ol className="space-y-3 text-gray-700">
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">1</span>
+              <span>Select &quot;Check Out&quot; or &quot;Check In&quot; mode</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">2</span>
+              <span>Click &quot;Start Scanning&quot; to activate your camera, or enter the barcode manually</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">3</span>
+              <span>Point your camera at the book&apos;s barcode and it will be detected automatically</span>
+            </li>
+          </ol>
+        </div>
       </div>
-
-      {message && <p style={{ padding: "0.75rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "0.375rem", marginBottom: "1rem" }}>{message}</p>}
-
-      {scanning && (
-        <video ref={videoRef} style={{ width: "100%", borderRadius: "0.5rem", marginBottom: "1rem" }} />
-      )}
-
-      <button onClick={startScanner} disabled={scanning} style={{ ...btnStyle, marginBottom: "1rem", background: "#08abdb", width: "100%" }}>
-        {scanning ? "Scanning..." : "Open Camera Scanner"}
-      </button>
-
-      <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.5rem" }}>
-        <input
-          placeholder="Or enter barcode manually..."
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          style={{ flex: 1, padding: "0.75rem", border: "1px solid #d1d5db", borderRadius: "0.375rem" }}
-        />
-        <button type="submit" style={btnStyle}>
-          {mode === "checkout" ? "Check Out" : "Check In"}
-        </button>
-      </form>
-    </main>
+    </div>
   );
 }
-
-const tabStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  border: "none",
-  borderRadius: "0.375rem",
-  cursor: "pointer",
-  fontWeight: 500,
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "0.75rem 1rem",
-  background: "#125f89",
-  color: "white",
-  border: "none",
-  borderRadius: "0.375rem",
-  cursor: "pointer",
-};

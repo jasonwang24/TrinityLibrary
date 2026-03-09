@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, CheckCircle, XCircle, BookOpen, Edit, Calendar, X } from "lucide-react";
 
 interface ResourceDetail {
   id: string;
@@ -20,10 +21,10 @@ interface ResourceDetail {
     barcode: string;
     status: string;
     location?: string;
-    checkouts: { user: { name: string }; id: string }[];
+    checkouts: { user: { id: string; name: string }; id: string }[];
   }[];
   tags: { tag: { id: string; name: string; color: string } }[];
-  holds: { id: string; user: { name: string }; createdAt: string }[];
+  holds: { id: string; user: { id: string; name: string }; createdAt: string }[];
 }
 
 interface Tag {
@@ -37,6 +38,7 @@ export default function ResourceDetailPage() {
   const { data: session } = useSession();
   const [resource, setResource] = useState<ResourceDetail | null>(null);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [editing, setEditing] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [editForm, setEditForm] = useState({
@@ -64,6 +66,12 @@ export default function ResourceDetailPage() {
     fetch(`/api/resources/${id}`)
       .then((r) => r.json())
       .then(setResource);
+  }
+
+  function showMessage(text: string, type: "success" | "error" = "success") {
+    setMessage(text);
+    setMessageType(type);
+    setTimeout(() => setMessage(""), 3000);
   }
 
   function startEditing() {
@@ -100,9 +108,9 @@ export default function ResourceDetailPage() {
       const updated = await res.json();
       setResource(updated);
       setEditing(false);
-      setMessage("Saved!");
+      showMessage("Saved!");
     } else {
-      setMessage("Save failed");
+      showMessage("Save failed", "error");
     }
   }
 
@@ -114,10 +122,10 @@ export default function ResourceDetailPage() {
     });
     const data = await res.json();
     if (res.ok) {
-      setMessage("Checked out successfully!");
+      showMessage("Book successfully checked out! Due date: " + new Date(data.dueDate).toLocaleDateString());
       fetchResource();
     } else {
-      setMessage(data.error);
+      showMessage(data.error, "error");
     }
   }
 
@@ -129,10 +137,24 @@ export default function ResourceDetailPage() {
     });
     const data = await res.json();
     if (res.ok) {
-      setMessage("Hold placed!");
+      showMessage("Hold placed successfully! We'll notify you when the book becomes available.");
       fetchResource();
     } else {
-      setMessage(data.error);
+      showMessage(data.error, "error");
+    }
+  }
+
+  async function handleCancelHold(holdId: string) {
+    const res = await fetch("/api/holds", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ holdId }),
+    });
+    if (res.ok) {
+      showMessage("Hold cancelled.");
+      fetchResource();
+    } else {
+      showMessage("Failed to cancel hold", "error");
     }
   }
 
@@ -152,190 +174,324 @@ export default function ResourceDetailPage() {
     }));
   }
 
-  if (!resource) return <p style={{ padding: "2rem" }}>Loading...</p>;
+  if (!resource) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
+    );
+  }
 
   const availableCopies = resource.copies.filter((c) => c.status === "AVAILABLE");
   const isManager = session?.user.role === "MANAGER";
+  const userHasCheckedOut = session ? resource.copies.some((c) =>
+    c.checkouts.some((co) => co.user.id === session.user.id)
+  ) : false;
+  const userHold = session ? resource.holds.find((h) => h.user.id === session.user.id) : null;
 
   return (
-    <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem" }}>
-      <Link href="/catalog" style={{ color: "#125f89", marginBottom: "1rem", display: "inline-block" }}>
-        &larr; Back to Catalog
-      </Link>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Link
+          href="/catalog"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-medium"
+        >
+          <ArrowLeft size={20} />
+          Back to Catalog
+        </Link>
 
-      {message && (
-        <p style={{ padding: "0.75rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "0.375rem", margin: "1rem 0" }}>
-          {message}
-        </p>
-      )}
-
-      {editing ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: 600 }}>Edit Resource</h2>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button onClick={handleSave} style={buttonStyle}>Save</button>
-              <button onClick={() => setEditing(false)} style={{ ...buttonStyle, background: "transparent", color: "#666", border: "1px solid #d1d5db" }}>Cancel</button>
-            </div>
+        {message && (
+          <div className={`mb-6 px-4 py-3 rounded-lg flex items-center gap-2 ${
+            messageType === "success"
+              ? "bg-green-50 border border-green-200 text-green-800"
+              : "bg-red-50 border border-red-200 text-red-800"
+          }`}>
+            <CheckCircle size={20} />
+            {message}
           </div>
+        )}
 
-          <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Title" style={inputStyle} />
-          <input value={editForm.author} onChange={(e) => setEditForm({ ...editForm, author: e.target.value })} placeholder="Author" style={inputStyle} />
-          <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" style={{ ...inputStyle, minHeight: 60 }} />
-
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input value={editForm.isbn} onChange={(e) => setEditForm({ ...editForm, isbn: e.target.value })} placeholder="ISBN" style={{ ...inputStyle, flex: 1 }} />
-            <input value={editForm.publisher} onChange={(e) => setEditForm({ ...editForm, publisher: e.target.value })} placeholder="Publisher" style={{ ...inputStyle, flex: 1 }} />
-            <input value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} placeholder="Year" type="number" style={{ ...inputStyle, width: 100 }} />
-          </div>
-
-          <div>
-            <p style={{ fontWeight: 500, marginBottom: "0.5rem" }}>Categories</p>
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              {allTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => toggleTag(tag.id)}
-                  style={{
-                    padding: "0.25rem 0.75rem",
-                    borderRadius: "1rem",
-                    fontSize: "0.875rem",
-                    cursor: "pointer",
-                    border: "none",
-                    background: editForm.selectedTagIds.includes(tag.id) ? tag.color : "#f3f4f6",
-                    color: editForm.selectedTagIds.includes(tag.id) ? "white" : "#666",
-                  }}
-                >
-                  {tag.name}
+        {editing ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Resource</h2>
+              <div className="flex gap-2">
+                <button onClick={handleSave} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                  Save
                 </button>
-              ))}
+                <button onClick={() => setEditing(false)} className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <p style={{ fontWeight: 500, marginBottom: "0.5rem" }}>Copy Locations</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              {editForm.copies.map((copy) => {
-                const original = resource.copies.find((c) => c.id === copy.id);
-                return (
-                  <div key={copy.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <span style={{ fontFamily: "monospace", fontSize: "0.875rem", minWidth: 100 }}>{original?.barcode}</span>
-                    <input
-                      value={copy.location}
-                      onChange={(e) => updateCopyLocation(copy.id, e.target.value)}
-                      placeholder="Location (e.g. Shelf 3)"
-                      style={{ ...inputStyle, flex: 1 }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-            <div>
-              <h1 style={{ fontSize: "1.75rem", fontWeight: "bold" }}>{resource.title}</h1>
-              <p style={{ color: "#666", fontSize: "1.1rem" }}>{resource.author}</p>
-            </div>
-            {isManager && (
-              <button onClick={startEditing} style={{ ...buttonStyle, background: "#08abdb" }}>
-                Edit
-              </button>
-            )}
-          </div>
+            <div className="space-y-4">
+              <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Title" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input value={editForm.author} onChange={(e) => setEditForm({ ...editForm, author: e.target.value })} placeholder="Author" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
 
-          {resource.description && <p style={{ margin: "1rem 0" }}>{resource.description}</p>}
+              <div className="grid grid-cols-3 gap-4">
+                <input value={editForm.isbn} onChange={(e) => setEditForm({ ...editForm, isbn: e.target.value })} placeholder="ISBN" className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <input value={editForm.publisher} onChange={(e) => setEditForm({ ...editForm, publisher: e.target.value })} placeholder="Publisher" className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <input value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} placeholder="Year" type="number" className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              </div>
 
-          <div style={{ display: "flex", gap: "1rem", margin: "1rem 0", flexWrap: "wrap" }}>
-            {resource.isbn && <span>ISBN: {resource.isbn}</span>}
-            {resource.year && <span>Year: {resource.year}</span>}
-            {resource.publisher && <span>Publisher: {resource.publisher}</span>}
-          </div>
-
-          <div style={{ display: "flex", gap: "0.5rem", margin: "1rem 0", flexWrap: "wrap" }}>
-            {resource.tags.map((t) => (
-              <span
-                key={t.tag.name}
-                style={{ padding: "0.25rem 0.75rem", background: t.tag.color + "20", color: t.tag.color, borderRadius: "1rem", fontSize: "0.875rem" }}
-              >
-                {t.tag.name}
-              </span>
-            ))}
-          </div>
-
-          {resource.digitalUrl && (
-            <p style={{ margin: "1rem 0" }}>
-              <a href={resource.digitalUrl} style={{ color: "#125f89" }}>Access Digital Resource</a>
-            </p>
-          )}
-
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginTop: "2rem" }}>Copies ({resource.copies.length})</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
-            {resource.copies.map((copy) => (
-              <div
-                key={copy.id}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", border: "1px solid #e5e7eb", borderRadius: "0.375rem" }}
-              >
-                <div>
-                  <span style={{ fontFamily: "monospace" }}>{copy.barcode}</span>
-                  {copy.location && <span style={{ color: "#666", marginLeft: "1rem" }}>{copy.location}</span>}
-                  <span
-                    style={{
-                      marginLeft: "1rem",
-                      color: copy.status === "AVAILABLE" ? "#16a34a" : "#ef4444",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {copy.status}
-                  </span>
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Categories</p>
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => toggleTag(tag.id)}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        editForm.selectedTagIds.includes(tag.id)
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {tag.name}
+                    </button>
+                  ))}
                 </div>
-                {session && copy.status === "AVAILABLE" && (
-                  <button onClick={() => handleCheckout(copy.id)} style={buttonStyle}>
-                    Check Out
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Copy Locations</p>
+                <div className="space-y-2">
+                  {editForm.copies.map((copy) => {
+                    const original = resource.copies.find((c) => c.id === copy.id);
+                    return (
+                      <div key={copy.id} className="flex items-center gap-3">
+                        <span className="font-mono text-sm text-gray-500 min-w-[100px]">{original?.barcode}</span>
+                        <input
+                          value={copy.location}
+                          onChange={(e) => updateCopyLocation(copy.id, e.target.value)}
+                          placeholder="Location (e.g. Shelf 3)"
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="grid md:grid-cols-3 gap-8 p-8">
+              <div className="md:col-span-1">
+                <div className="aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center mb-4">
+                  <BookOpen className="text-blue-300" size={80} />
+                </div>
+
+                <div className="mb-4">
+                  {availableCopies.length > 0 ? (
+                    <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
+                      <CheckCircle size={20} />
+                      <div>
+                        <div className="font-semibold">Available</div>
+                        <div className="text-sm">{availableCopies.length} of {resource.copies.length} copies ready</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-orange-50 border border-orange-200 text-orange-800 px-4 py-3 rounded-lg flex items-center gap-2">
+                      <XCircle size={20} />
+                      <div>
+                        <div className="font-semibold">All Checked Out</div>
+                        <div className="text-sm">No copies currently available</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {session && availableCopies.length > 0 && !userHasCheckedOut && (
+                  <button
+                    onClick={() => handleCheckout(availableCopies[0].id)}
+                    className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={20} />
+                    Check Out Book
+                  </button>
+                )}
+
+                {session && userHasCheckedOut && (
+                  <div className="w-full bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg text-sm text-center font-medium">
+                    You have this book checked out
+                  </div>
+                )}
+
+                {session && availableCopies.length === 0 && !userHasCheckedOut && !userHold && (
+                  <button
+                    onClick={handleHold}
+                    className="w-full bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Calendar size={20} />
+                    Place Hold
+                  </button>
+                )}
+
+                {session && userHold && (
+                  <button
+                    onClick={() => handleCancelHold(userHold.id)}
+                    className="w-full bg-red-50 border border-red-300 text-red-700 px-6 py-3 rounded-lg font-semibold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <X size={20} />
+                    Cancel Your Hold
+                  </button>
+                )}
+
+                {isManager && (
+                  <button
+                    onClick={startEditing}
+                    className="w-full mt-3 border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Edit size={18} />
+                    Edit Resource
                   </button>
                 )}
               </div>
-            ))}
+
+              <div className="md:col-span-2">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{resource.title}</h1>
+                <p className="text-xl text-gray-600 mb-6">by {resource.author}</p>
+
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {resource.tags.map((t) => (
+                    <span
+                      key={t.tag.name}
+                      className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium"
+                    >
+                      {t.tag.name}
+                    </span>
+                  ))}
+                </div>
+
+                {resource.description && (
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
+                    <p className="text-gray-700 leading-relaxed">{resource.description}</p>
+                  </div>
+                )}
+
+                <div className="border-t border-gray-200 pt-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Book Details</h2>
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {resource.isbn && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">ISBN</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{resource.isbn}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Author</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{resource.author}</dd>
+                    </div>
+                    {resource.publisher && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Publisher</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{resource.publisher}</dd>
+                      </div>
+                    )}
+                    {resource.year && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Year</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{resource.year}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Type</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{resource.type}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Availability</dt>
+                      <dd className="mt-1">
+                        {availableCopies.length > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-sm text-green-700 font-medium">
+                            <CheckCircle size={14} />
+                            {availableCopies.length} available
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-sm text-orange-700 font-medium">
+                            <XCircle size={14} />
+                            All checked out
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                {resource.digitalUrl && (
+                  <div className="border-t border-gray-200 pt-6 mt-6">
+                    <a
+                      href={resource.digitalUrl}
+                      className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-100 transition-colors"
+                    >
+                      Access Digital Resource
+                    </a>
+                  </div>
+                )}
+
+                <div className="border-t border-gray-200 pt-6 mt-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Copies ({resource.copies.length})</h2>
+                  <div className="space-y-2">
+                    {resource.copies.map((copy) => (
+                      <div
+                        key={copy.id}
+                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono text-sm">{copy.barcode}</span>
+                          {copy.location && <span className="text-sm text-gray-500">{copy.location}</span>}
+                          {copy.status === "AVAILABLE" ? (
+                            <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
+                              <CheckCircle size={12} />
+                              Available
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-800 text-xs font-semibold px-2 py-1 rounded-full">
+                              <XCircle size={12} />
+                              {copy.status}
+                            </span>
+                          )}
+                        </div>
+                        {session && copy.status === "AVAILABLE" && (
+                          <button
+                            onClick={() => handleCheckout(copy.id)}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                          >
+                            Check Out
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {resource.holds.length > 0 && (
+                  <div className="border-t border-gray-200 pt-6 mt-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Holds ({resource.holds.length})</h2>
+                    <div className="space-y-2">
+                      {resource.holds.map((h, i) => (
+                        <div key={h.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                          <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-semibold">
+                            {i + 1}
+                          </span>
+                          <span className="text-sm text-gray-900">{h.user.name}</span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(h.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-
-          {session && availableCopies.length === 0 && (
-            <button onClick={handleHold} style={{ ...buttonStyle, marginTop: "1rem", background: "#c6af7d" }}>
-              Place Hold
-            </button>
-          )}
-
-          {resource.holds.length > 0 && (
-            <>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginTop: "2rem" }}>Holds ({resource.holds.length})</h2>
-              <ol style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
-                {resource.holds.map((h) => (
-                  <li key={h.id}>{h.user.name} — {new Date(h.createdAt).toLocaleDateString()}</li>
-                ))}
-              </ol>
-            </>
-          )}
-        </>
-      )}
-    </main>
+        )}
+      </div>
+    </div>
   );
 }
-
-const buttonStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  background: "#125f89",
-  color: "white",
-  border: "none",
-  borderRadius: "0.375rem",
-  cursor: "pointer",
-  fontWeight: 500,
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: "0.5rem",
-  border: "1px solid #d1d5db",
-  borderRadius: "0.375rem",
-  fontSize: "0.875rem",
-};

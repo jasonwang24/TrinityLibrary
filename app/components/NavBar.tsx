@@ -2,38 +2,148 @@
 
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { BookOpen, User, QrCode, Settings, LogOut, ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 
 export default function NavBar() {
   const { data: session } = useSession();
+  const pathname = usePathname();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const isActive = (path: string) => pathname === path;
+  const isManager = session?.user.role === "MANAGER";
 
   return (
-    <nav style={{ background: "#125f89", color: "white", padding: "0.75rem 2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-        <Link href="/" style={{ color: "white", textDecoration: "none", fontWeight: 700, fontSize: "1.1rem" }}>
-          Trinity Library
-        </Link>
-        <Link href="/catalog" style={{ color: "#c6af7d", textDecoration: "none" }}>Catalog</Link>
-        {session && (
-          <Link href="/dashboard" style={{ color: "#c6af7d", textDecoration: "none" }}>My Dashboard</Link>
-        )}
-        {session?.user.role === "MANAGER" && (
-          <Link href="/manager" style={{ color: "#c6af7d", textDecoration: "none" }}>Manager</Link>
-        )}
-      </div>
-      <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-        {session ? (
-          <>
-            <span style={{ fontSize: "0.875rem" }}>{session.user.name}</span>
-            <button
-              onClick={() => signOut()}
-              style={{ background: "transparent", border: "1px solid #c6af7d", color: "#c6af7d", padding: "0.375rem 0.75rem", borderRadius: "0.375rem", cursor: "pointer", fontSize: "0.875rem" }}
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center gap-2">
+            <div className="bg-blue-600 text-white rounded-lg p-2">
+              <BookOpen size={24} />
+            </div>
+            <Link href="/" className="text-xl font-bold text-gray-900">
+              Trinity Library
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Link
+              href="/catalog"
+              className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                isActive("/catalog")
+                  ? "bg-blue-50 text-blue-700"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
             >
-              Sign Out
-            </button>
-          </>
-        ) : (
-          <Link href="/login" style={{ color: "#c6af7d", textDecoration: "none" }}>Sign In</Link>
-        )}
+              <BookOpen size={18} />
+              Catalog
+            </Link>
+
+            {session && (
+              <Link
+                href="/dashboard"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  isActive("/dashboard")
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <User size={18} />
+                My Dashboard
+              </Link>
+            )}
+
+            {isManager && (
+              <>
+                <Link
+                  href="/manager/scan"
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                    isActive("/manager/scan")
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <QrCode size={18} />
+                  Scan
+                </Link>
+
+                <Link
+                  href="/manager"
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                    isActive("/manager")
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <Settings size={18} />
+                  Manage
+                </Link>
+              </>
+            )}
+          </div>
+
+          <div className="relative" ref={menuRef}>
+            {session ? (
+              <>
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold text-sm">
+                    {session.user.name?.charAt(0) || "U"}
+                  </div>
+                  <div className="text-left hidden sm:block">
+                    <div className="text-sm font-medium text-gray-900">{session.user.name}</div>
+                    <div className="text-xs text-gray-500">{session.user.email}</div>
+                  </div>
+                  <ChevronDown size={16} className="text-gray-500" />
+                </button>
+
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="text-sm font-medium text-gray-900">{session.user.name}</div>
+                      <div className="text-xs text-gray-500">{session.user.email}</div>
+                      {isManager && (
+                        <div className="mt-1">
+                          <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            Manager
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => signOut()}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <LogOut size={16} />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
     </nav>
   );

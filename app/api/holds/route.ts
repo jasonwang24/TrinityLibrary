@@ -22,6 +22,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const activeCheckout = await prisma.checkout.findFirst({
+    where: {
+      userId: session.user.id,
+      returnedAt: null,
+      copy: { resourceId },
+    },
+  });
+
+  if (activeCheckout) {
+    return NextResponse.json(
+      { error: "You already have this book checked out" },
+      { status: 400 }
+    );
+  }
+
   const existingHold = await prisma.hold.findFirst({
     where: { resourceId, userId: session.user.id, status: "ACTIVE" },
   });

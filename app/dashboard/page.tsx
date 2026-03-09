@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle } from "lucide-react";
 
 interface Checkout {
   id: string;
@@ -41,9 +42,7 @@ export default function DashboardPage() {
   }, [status, router]);
 
   useEffect(() => {
-    if (session) {
-      fetchData();
-    }
+    if (session) fetchData();
   }, [session]);
 
   function fetchData() {
@@ -60,6 +59,7 @@ export default function DashboardPage() {
     if (res.ok) {
       setMessage("Returned successfully!");
       fetchData();
+      setTimeout(() => setMessage(""), 3000);
     }
   }
 
@@ -76,6 +76,7 @@ export default function DashboardPage() {
     } else {
       setMessage(data.error);
     }
+    setTimeout(() => setMessage(""), 3000);
   }
 
   async function handlePickupHold(copyId: string) {
@@ -91,6 +92,7 @@ export default function DashboardPage() {
       const data = await res.json();
       setMessage(data.error);
     }
+    setTimeout(() => setMessage(""), 3000);
   }
 
   async function handleCancelHold(holdId: string) {
@@ -102,161 +104,237 @@ export default function DashboardPage() {
     if (res.ok) {
       setMessage("Hold cancelled.");
       fetchData();
+      setTimeout(() => setMessage(""), 3000);
     }
   }
 
-  if (status === "loading") return <p style={{ padding: "2rem" }}>Loading...</p>;
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
+    );
+  }
   if (!session) return null;
 
   const isOverdue = (dueDate: string) => new Date(dueDate) < new Date();
+  const getDaysUntilDue = (dueDate: string) => {
+    const due = new Date(dueDate);
+    const today = new Date();
+    return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
   const readyHolds = holds.filter((h) => h.status === "FULFILLED");
   const activeHolds = holds.filter((h) => h.status === "ACTIVE");
+  const isManager = session.user.role === "MANAGER";
 
   return (
-    <main style={{ maxWidth: 800, margin: "0 auto", padding: "2rem" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>My Dashboard</h1>
-
-      {message && (
-        <p style={{ padding: "0.75rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "0.375rem", marginBottom: "1rem" }}>
-          {message}
-        </p>
-      )}
-
-      {readyHolds.length > 0 && (
-        <>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "0.75rem", color: "#125f89" }}>
-            Ready for Pickup ({readyHolds.length})
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "2rem" }}>
-            {readyHolds.map((hold) => (
-              <div
-                key={hold.id}
-                style={{
-                  padding: "1rem",
-                  border: "2px solid #c6af7d",
-                  borderRadius: "0.5rem",
-                  background: "#fefce8",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                  <div>
-                    <h3 style={{ fontWeight: 600 }}>{hold.resource.title}</h3>
-                    <p style={{ color: "#666", fontSize: "0.875rem" }}>{hold.resource.author}</p>
-                    <p style={{ fontSize: "0.875rem", color: "#967e50", marginTop: "0.25rem" }}>
-                      Your hold is ready! Pick up within 3 days.
-                    </p>
-                    {hold.notifiedAt && (
-                      <p style={{ fontSize: "0.75rem", color: "#999" }}>
-                        Available since: {new Date(hold.notifiedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    {hold.resource.copies.length > 0 && (
-                      <button onClick={() => handlePickupHold(hold.resource.copies[0].id)} style={btnSmall}>
-                        Check Out
-                      </button>
-                    )}
-                    <button onClick={() => handleCancelHold(hold.id)} style={{ ...btnSmall, background: "transparent", color: "#ef4444", border: "1px solid #ef4444" }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "0.75rem" }}>
-        Current Checkouts ({checkouts.length})
-      </h2>
-
-      {checkouts.length === 0 ? (
-        <p style={{ color: "#666", marginBottom: "2rem" }}>No active checkouts. <Link href="/catalog" style={{ color: "#125f89" }}>Browse the catalog</Link>.</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "2rem" }}>
-          {checkouts.map((co) => (
-            <div
-              key={co.id}
-              style={{
-                padding: "1rem",
-                border: `1px solid ${isOverdue(co.dueDate) ? "#fecaca" : "#e5e7eb"}`,
-                borderRadius: "0.5rem",
-                background: isOverdue(co.dueDate) ? "#fef2f2" : "white",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                <div>
-                  <h3 style={{ fontWeight: 600 }}>{co.copy.resource.title}</h3>
-                  <p style={{ color: "#666", fontSize: "0.875rem" }}>{co.copy.resource.author}</p>
-                  <p style={{ fontSize: "0.875rem", marginTop: "0.25rem" }}>
-                    Barcode: <span style={{ fontFamily: "monospace" }}>{co.copy.barcode}</span>
-                  </p>
-                  <p style={{ fontSize: "0.875rem", color: isOverdue(co.dueDate) ? "#ef4444" : "#666" }}>
-                    Due: {new Date(co.dueDate).toLocaleDateString()}
-                    {isOverdue(co.dueDate) && " (OVERDUE)"}
-                  </p>
-                  <p style={{ fontSize: "0.75rem", color: "#999" }}>Renewals used: {co.renewals}/2</p>
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  {co.renewals < 2 && (
-                    <button onClick={() => handleRenew(co.id)} style={{ ...btnSmall, background: "#967e50" }}>
-                      Renew
-                    </button>
-                  )}
-                  <button onClick={() => handleReturn(co.copy.barcode)} style={btnSmall}>
-                    Return
-                  </button>
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-center gap-6">
+            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-3xl">
+              {session.user.name?.charAt(0) || "U"}
+            </div>
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">{session.user.name}</h1>
+              <p className="text-gray-600 mb-2">{session.user.email}</p>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  <User size={14} />
+                  Active Member
+                </span>
+                {isManager && (
+                  <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                    Manager
+                  </span>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {activeHolds.length > 0 && (
-        <>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "0.75rem" }}>
-            Active Holds ({activeHolds.length})
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {activeHolds.map((hold) => (
-              <div
-                key={hold.id}
-                style={{
-                  padding: "1rem",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "0.5rem",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                  <div>
-                    <h3 style={{ fontWeight: 600 }}>{hold.resource.title}</h3>
-                    <p style={{ color: "#666", fontSize: "0.875rem" }}>{hold.resource.author}</p>
-                    <p style={{ fontSize: "0.75rem", color: "#999", marginTop: "0.25rem" }}>
-                      Placed: {new Date(hold.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button onClick={() => handleCancelHold(hold.id)} style={{ ...btnSmall, background: "transparent", color: "#ef4444", border: "1px solid #ef4444" }}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ))}
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600">{checkouts.length}</div>
+              <div className="text-sm text-gray-600">Books Checked Out</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-orange-600">{holds.length}</div>
+              <div className="text-sm text-gray-600">Books on Hold</div>
+            </div>
           </div>
-        </>
-      )}
-    </main>
+        </div>
+
+        {message && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
+            <CheckCircle size={20} />
+            {message}
+          </div>
+        )}
+
+        {readyHolds.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2 text-amber-700">
+              <AlertCircle size={24} />
+              Ready for Pickup ({readyHolds.length})
+            </h2>
+            <div className="space-y-4">
+              {readyHolds.map((hold) => (
+                <div key={hold.id} className="bg-amber-50 rounded-lg shadow-sm border-2 border-amber-300 p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{hold.resource.title}</h3>
+                      <p className="text-gray-600 text-sm">{hold.resource.author}</p>
+                      <p className="text-sm text-amber-700 mt-1">Your hold is ready! Pick up within 3 days.</p>
+                      {hold.notifiedAt && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Available since: {formatDate(hold.notifiedAt)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      {hold.resource.copies.length > 0 && (
+                        <button
+                          onClick={() => handlePickupHold(hold.resource.copies[0].id)}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Check Out
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleCancelHold(hold.id)}
+                        className="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <BookOpen size={24} />
+              Checked Out Books
+            </h2>
+
+            {checkouts.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                <BookOpen className="mx-auto text-gray-400 mb-3" size={48} />
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No books checked out</h3>
+                <p className="text-gray-600 mb-4">Browse the library to find books to read</p>
+                <Link
+                  href="/catalog"
+                  className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Browse Catalog
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {checkouts.map((co) => {
+                  const daysUntilDue = getDaysUntilDue(co.dueDate);
+                  const overdue = isOverdue(co.dueDate);
+                  const isDueSoon = daysUntilDue >= 0 && daysUntilDue <= 3;
+
+                  return (
+                    <div key={co.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="text-lg font-semibold text-gray-900">{co.copy.resource.title}</h3>
+                        {(overdue || isDueSoon) && (
+                          <AlertCircle size={20} className={overdue ? "text-red-500" : "text-orange-500"} />
+                        )}
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Calendar size={16} />
+                          <span>Checked out: {formatDate(co.checkedOutAt)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock size={16} />
+                          <span className={
+                            overdue ? "text-red-600 font-medium" :
+                            isDueSoon ? "text-orange-600 font-medium" : "text-gray-600"
+                          }>
+                            Due: {formatDate(co.dueDate)}
+                            {overdue && " (Overdue)"}
+                            {isDueSoon && !overdue && ` (${daysUntilDue} days left)`}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">Renewals: {co.renewals}/2</p>
+                      </div>
+
+                      <div className="flex gap-2 mt-3">
+                        {co.renewals < 2 && !overdue && (
+                          <button
+                            onClick={() => handleRenew(co.id)}
+                            className="flex-1 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-100 transition-colors"
+                          >
+                            Request Extension (+14 days)
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleReturn(co.copy.barcode)}
+                          className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                        >
+                          Return
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Clock size={24} />
+              Active Holds
+            </h2>
+
+            {activeHolds.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                <Clock className="mx-auto text-gray-400 mb-3" size={48} />
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No holds placed</h3>
+                <p className="text-gray-600">You can place holds on checked-out books</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activeHolds.map((hold) => (
+                  <div key={hold.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <Link
+                      href={`/catalog/${hold.resource.id}`}
+                      className="text-lg font-semibold text-gray-900 hover:text-blue-600 block mb-3"
+                    >
+                      {hold.resource.title}
+                    </Link>
+
+                    <div className="space-y-2 text-sm">
+                      <p className="text-gray-600">{hold.resource.author}</p>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Calendar size={16} />
+                        <span>Requested: {formatDate(hold.createdAt)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleCancelHold(hold.id)}
+                      className="mt-3 w-full bg-red-50 text-red-700 px-4 py-2 rounded-lg font-medium hover:bg-red-100 transition-colors"
+                    >
+                      Cancel Hold
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
-
-const btnSmall: React.CSSProperties = {
-  padding: "0.375rem 0.75rem",
-  background: "#125f89",
-  color: "white",
-  border: "none",
-  borderRadius: "0.375rem",
-  cursor: "pointer",
-  fontSize: "0.875rem",
-};

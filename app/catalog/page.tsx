@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List } from "lucide-react";
 
 interface Resource {
   id: string;
   title: string;
   author: string;
+  isbn?: string;
   copies: { id: string; status: string }[];
   tags: { tag: { id: string; name: string; color: string } }[];
 }
@@ -26,6 +28,8 @@ export default function CatalogPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [viewMode, setViewMode] = useState<"gallery" | "spreadsheet">("gallery");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "checked-out">("all");
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -56,132 +60,272 @@ export default function CatalogPage() {
   const availableCount = (copies: Resource["copies"]) =>
     copies.filter((c) => c.status === "AVAILABLE").length;
 
+  const filteredResources = resources.filter((r) => {
+    if (availabilityFilter === "available") return availableCount(r.copies) > 0;
+    if (availabilityFilter === "checked-out") return availableCount(r.copies) === 0;
+    return true;
+  });
+
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: "2rem" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Catalog</h1>
-
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        <input
-          type="text"
-          placeholder="Search by title or author..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, padding: "0.5rem", border: "1px solid #d1d5db", borderRadius: "0.375rem" }}
-        />
-        <select
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-          style={{ padding: "0.5rem", border: "1px solid #d1d5db", borderRadius: "0.375rem" }}
-        >
-          <option value="">All Categories</option>
-          {tags.map((t) => (
-            <option key={t.id} value={t.name}>{t.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {loading ? (
-        <p>Loading...</p>
-      ) : resources.length === 0 ? (
-        <p style={{ color: "#666" }}>No resources found.</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {resources.map((r) => (
-            <Link
-              key={r.id}
-              href={`/catalog/${r.id}`}
-              style={{
-                display: "block",
-                padding: "1rem",
-                border: "1px solid #e5e7eb",
-                borderRadius: "0.5rem",
-                textDecoration: "none",
-                color: "inherit",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <h2 style={{ fontWeight: 600 }}>{r.title}</h2>
-                  <p style={{ color: "#666" }}>{r.author}</p>
-                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
-                    {r.tags.map((t) => (
-                      <span
-                        key={t.tag.id}
-                        style={{ fontSize: "0.75rem", padding: "0.125rem 0.5rem", background: t.tag.color + "20", color: t.tag.color, borderRadius: "1rem" }}
-                      >
-                        {t.tag.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <p style={{ fontWeight: 600, color: availableCount(r.copies) > 0 ? "#16a34a" : "#ef4444" }}>
-                    {availableCount(r.copies)} / {r.copies.length} available
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.25rem", marginTop: "1.5rem", flexWrap: "wrap" }}>
-          <button
-            onClick={() => setPage(1)}
-            disabled={page === 1}
-            style={{ ...paginationBtn, opacity: page === 1 ? 0.4 : 1 }}
-          >
-            &laquo;
-          </button>
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            style={{ ...paginationBtn, opacity: page === 1 ? 0.4 : 1 }}
-          >
-            &lsaquo;
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Catalog</h1>
+            <p className="text-gray-600">Browse and search our collection of books</p>
+          </div>
+          <div className="flex gap-2 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
             <button
-              key={p}
-              onClick={() => setPage(p)}
-              style={{
-                ...paginationBtn,
-                background: p === page ? "#125f89" : "transparent",
-                color: p === page ? "white" : "#125f89",
-                border: p === page ? "none" : "1px solid #d1d5db",
-                minWidth: "2.25rem",
-              }}
+              onClick={() => setViewMode("gallery")}
+              className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
+                viewMode === "gallery"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
             >
-              {p}
+              <Grid size={18} />
+              Gallery
             </button>
-          ))}
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            style={{ ...paginationBtn, opacity: page === totalPages ? 0.4 : 1 }}
-          >
-            &rsaquo;
-          </button>
-          <button
-            onClick={() => setPage(totalPages)}
-            disabled={page === totalPages}
-            style={{ ...paginationBtn, opacity: page === totalPages ? 0.4 : 1 }}
-          >
-            &raquo;
-          </button>
+            <button
+              onClick={() => setViewMode("spreadsheet")}
+              className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
+                viewMode === "spreadsheet"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <List size={18} />
+              Spreadsheet
+            </button>
+          </div>
         </div>
-      )}
-    </main>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search by title, author, or ISBN..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <Filter size={16} />
+              Availability
+            </label>
+            <div className="flex gap-2 mt-1">
+              <button
+                onClick={() => setAvailabilityFilter("all")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  availabilityFilter === "all"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                All Books
+              </button>
+              <button
+                onClick={() => setAvailabilityFilter("available")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  availabilityFilter === "available"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Available
+              </button>
+              <button
+                onClick={() => setAvailabilityFilter("checked-out")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  availabilityFilter === "checked-out"
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Checked Out
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Tags</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setTagFilter("")}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  tagFilter === ""
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                All
+              </button>
+              {tags.map((tag) => (
+                <button
+                  key={tag.id}
+                  onClick={() => setTagFilter(tag.name === tagFilter ? "" : tag.name)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    tagFilter === tag.name
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {tag.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-4 text-sm text-gray-600">
+          Showing {filteredResources.length} of {total} books
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-lg text-gray-600">Loading...</div>
+          </div>
+        ) : filteredResources.length === 0 ? (
+          <div className="text-center py-12">
+            <BookOpen className="mx-auto text-gray-400 mb-4" size={48} />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No books found</h3>
+            <p className="text-gray-600">Try adjusting your search or filters</p>
+          </div>
+        ) : viewMode === "gallery" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredResources.map((r) => {
+              const available = availableCount(r.copies);
+              return (
+                <Link
+                  key={r.id}
+                  href={`/catalog/${r.id}`}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 relative flex items-center justify-center">
+                    <BookOpen className="text-blue-300" size={64} />
+                    <div className="absolute top-2 right-2">
+                      {available > 0 ? (
+                        <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                          <CheckCircle size={12} />
+                          Available
+                        </div>
+                      ) : (
+                        <div className="bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                          <XCircle size={12} />
+                          Checked Out
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{r.title}</h3>
+                    <p className="text-sm text-gray-600 mb-2">{r.author}</p>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {r.tags.slice(0, 2).map((t) => (
+                        <span
+                          key={t.tag.id}
+                          className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded"
+                        >
+                          {t.tag.name}
+                        </span>
+                      ))}
+                      {r.tags.length > 2 && (
+                        <span className="text-xs text-gray-500 px-2 py-1">
+                          +{r.tags.length - 2} more
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {available} / {r.copies.length} copies available
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Author</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tags</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Availability</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredResources.map((r) => {
+                    const available = availableCount(r.copies);
+                    return (
+                      <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <Link href={`/catalog/${r.id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                            {r.title}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{r.author}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {r.tags.slice(0, 3).map((t) => (
+                              <span key={t.tag.id} className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded">
+                                {t.tag.name}
+                              </span>
+                            ))}
+                            {r.tags.length > 3 && (
+                              <span className="text-xs text-gray-500 px-1">+{r.tags.length - 3}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {available > 0 ? (
+                            <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+                              <CheckCircle size={12} />
+                              {available} Available
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+                              <XCircle size={12} />
+                              Checked Out
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-8">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
-
-const paginationBtn: React.CSSProperties = {
-  padding: "0.5rem 1rem",
-  background: "#125f89",
-  color: "white",
-  border: "none",
-  borderRadius: "0.375rem",
-  cursor: "pointer",
-  fontSize: "0.875rem",
-};

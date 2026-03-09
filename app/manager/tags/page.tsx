@@ -4,8 +4,9 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, Tag, Plus, Trash2 } from "lucide-react";
 
-interface Tag {
+interface TagItem {
   id: string;
   name: string;
   color: string;
@@ -14,7 +15,7 @@ interface Tag {
 export default function TagsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [tags, setTags] = useState<Tag[]>([]);
+  const [tags, setTags] = useState<TagItem[]>([]);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#6B7280");
 
@@ -44,39 +45,73 @@ export default function TagsPage() {
   if (!session || session.user.role !== "MANAGER") return null;
 
   return (
-    <main style={{ maxWidth: 500, margin: "0 auto", padding: "2rem" }}>
-      <Link href="/manager" style={{ color: "#125f89", marginBottom: "1rem", display: "inline-block" }}>
-        &larr; Manager Panel
-      </Link>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem" }}>Manage Tags</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Link
+          href="/manager"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-medium"
+        >
+          <ArrowLeft size={20} />
+          Back to Manage
+        </Link>
 
-      <form onSubmit={handleAdd} style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
-        <input
-          placeholder="Tag name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          style={{ flex: 1, padding: "0.5rem", border: "1px solid #d1d5db", borderRadius: "0.375rem" }}
-        />
-        <input
-          type="color"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          style={{ width: 40, height: 38, border: "1px solid #d1d5db", borderRadius: "0.375rem", cursor: "pointer" }}
-        />
-        <button type="submit" style={{ padding: "0.5rem 1rem", background: "#125f89", color: "white", border: "none", borderRadius: "0.375rem", cursor: "pointer" }}>
-          Add
-        </button>
-      </form>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+            <Tag size={32} />
+            Manage Tags
+          </h1>
+          <p className="text-gray-600">Create and organize tags for your library resources</p>
+        </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        {tags.map((tag) => (
-          <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem", border: "1px solid #e5e7eb", borderRadius: "0.375rem" }}>
-            <div style={{ width: 20, height: 20, borderRadius: "50%", background: tag.color }} />
-            <span>{tag.name}</span>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Tag</h2>
+          <form onSubmit={handleAdd} className="flex gap-3">
+            <input
+              placeholder="Tag name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Add
+            </button>
+          </form>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Existing Tags ({tags.length})
+          </h2>
+          <div className="space-y-2">
+            {tags.map((tag) => (
+              <div
+                key={tag.id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-5 h-5 rounded-full"
+                    style={{ backgroundColor: tag.color }}
+                  />
+                  <span className="font-medium text-gray-900">{tag.name}</span>
+                </div>
+                <span className="text-xs text-gray-500 font-mono">{tag.color}</span>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List } from "lucide-react";
+import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface Resource {
   id: string;
   title: string;
   author: string;
   isbn?: string;
+  coverImage?: string;
   copies: { id: string; status: string }[];
   tags: { tag: { id: string; name: string; color: string } }[];
 }
@@ -30,6 +31,8 @@ export default function CatalogPage() {
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"gallery" | "spreadsheet">("gallery");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "checked-out">("all");
+  const [sliderPage, setSliderPage] = useState(1);
+  const contentRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -38,10 +41,16 @@ export default function CatalogPage() {
 
   useEffect(() => {
     setPage(1);
+    setSliderPage(1);
   }, [search, tagFilter]);
 
   useEffect(() => {
-    setLoading(true);
+    setSliderPage(page);
+  }, [page]);
+
+  useEffect(() => {
+    if (resources.length === 0) setLoading(true);
+    const scrollY = window.scrollY;
     const params = new URLSearchParams();
     if (search) params.set("q", search);
     if (tagFilter) params.set("tag", tagFilter);
@@ -54,11 +63,12 @@ export default function CatalogPage() {
         setTotalPages(data.totalPages);
         setTotal(data.total);
         setLoading(false);
+        requestAnimationFrame(() => window.scrollTo(0, scrollY));
       });
   }, [search, tagFilter, page]);
 
   const availableCount = (copies: Resource["copies"]) =>
-    copies.filter((c) => c.status === "AVAILABLE").length;
+    (copies || []).filter((c) => c.status === "AVAILABLE").length;
 
   const filteredResources = resources.filter((r) => {
     if (availabilityFilter === "available") return availableCount(r.copies) > 0;
@@ -185,6 +195,7 @@ export default function CatalogPage() {
           Showing {filteredResources.length} of {total} books
         </div>
 
+        <div ref={contentRef} style={{ minHeight: contentRef.current?.offsetHeight || "auto" }}>
         {loading ? (
           <div className="text-center py-12">
             <div className="text-lg text-gray-600">Loading...</div>
@@ -205,8 +216,27 @@ export default function CatalogPage() {
                   href={`/catalog/${r.id}`}
                   className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
                 >
-                  <div className="aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 relative flex items-center justify-center">
-                    <BookOpen className="text-blue-300" size={64} />
+                  <div className="aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 relative flex items-center justify-center overflow-hidden">
+                    {(r.coverImage || r.isbn) ? (
+                      <img
+                        src={r.coverImage
+                          ? `https://books.google.com/books/content?id=${r.coverImage}&printsec=frontcover&img=1&zoom=3`
+                          : `https://covers.openlibrary.org/b/isbn/${r.isbn}-L.jpg`}
+                        alt={r.title}
+                        className="w-full h-full object-cover"
+                        onLoad={(e) => {
+                          if (e.currentTarget.naturalWidth <= 1) {
+                            e.currentTarget.style.display = "none";
+                            (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
+                          }
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
+                        }}
+                      />
+                    ) : null}
+                    <BookOpen className={`text-blue-300 absolute ${r.coverImage || r.isbn ? "hidden" : ""}`} size={64} />
                     <div className="absolute top-2 right-2">
                       {available > 0 ? (
                         <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
@@ -303,26 +333,46 @@ export default function CatalogPage() {
             </div>
           </div>
         )}
+        </div>
 
         {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-8">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-600">
-              Page {page} of {totalPages}
+          <div className="flex flex-col items-center gap-3 mt-8">
+            <div className="flex items-center gap-4 w-full max-w-md">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-2 rounded-full text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div className="flex-1 relative">
+                <input
+                  type="range"
+                  min={1}
+                  max={totalPages}
+                  value={sliderPage}
+                  onChange={(e) => setSliderPage(Number(e.target.value))}
+                  onMouseUp={() => setPage(sliderPage)}
+                  onTouchEnd={() => setPage(sliderPage)}
+                  className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-blue-600
+                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-blue-700 [&::-webkit-slider-thumb]:transition-colors"
+                />
+                <div className="flex justify-between mt-1">
+                  <span className="text-xs text-gray-400">1</span>
+                  <span className="text-xs text-gray-400">{totalPages}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-2 rounded-full text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ArrowRight size={20} />
+              </button>
+            </div>
+            <span className="text-sm font-medium text-gray-700">
+              Page {sliderPage} of {totalPages}
             </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
           </div>
         )}
       </div>

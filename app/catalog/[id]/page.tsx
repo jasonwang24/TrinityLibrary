@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, XCircle, BookOpen, Edit, Calendar, X } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, BookOpen, Edit, Calendar, X, Trash2 } from "lucide-react";
 
 interface ResourceDetail {
   id: string;
   title: string;
   author: string;
   isbn?: string;
+  coverImage?: string;
   description?: string;
   type: string;
   publisher?: string;
@@ -35,8 +36,10 @@ interface Tag {
 
 export default function ResourceDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const { data: session } = useSession();
   const [resource, setResource] = useState<ResourceDetail | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [editing, setEditing] = useState(false);
@@ -144,6 +147,16 @@ export default function ResourceDetailPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!confirm(`Are you sure you want to delete "${resource?.title}"? This cannot be undone.`)) return;
+    const res = await fetch(`/api/resources/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      router.push("/catalog");
+    } else {
+      showMessage("Failed to delete resource", "error");
+    }
+  }
+
   async function handleCancelHold(holdId: string) {
     const res = await fetch("/api/holds", {
       method: "DELETE",
@@ -182,7 +195,7 @@ export default function ResourceDetailPage() {
     );
   }
 
-  const availableCopies = resource.copies.filter((c) => c.status === "AVAILABLE");
+  const availableCopies = (resource.copies || []).filter((c) => c.status === "AVAILABLE");
   const isManager = session?.user.role === "MANAGER";
   const userHasCheckedOut = session ? resource.copies.some((c) =>
     c.checkouts.some((co) => co.user.id === session.user.id)
@@ -281,8 +294,30 @@ export default function ResourceDetailPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="grid md:grid-cols-3 gap-8 p-8">
               <div className="md:col-span-1">
-                <div className="aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center mb-4">
-                  <BookOpen className="text-blue-300" size={80} />
+                <div
+                  className={`aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center mb-4 overflow-hidden ${resource.coverImage || resource.isbn ? "cursor-pointer" : ""}`}
+                  onClick={() => (resource.coverImage || resource.isbn) && setShowPreview(true)}
+                >
+                  {(resource.coverImage || resource.isbn) ? (
+                    <img
+                      src={resource.coverImage
+                        ? `https://books.google.com/books/content?id=${resource.coverImage}&printsec=frontcover&img=1&zoom=3`
+                        : `https://covers.openlibrary.org/b/isbn/${resource.isbn}-L.jpg`}
+                      alt={resource.title}
+                      className="w-full h-full object-cover rounded-lg"
+                      onLoad={(e) => {
+                        if (e.currentTarget.naturalWidth <= 1) {
+                          e.currentTarget.style.display = "none";
+                          (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
+                        }
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
+                      }}
+                    />
+                  ) : null}
+                  <BookOpen className={`text-blue-300 absolute ${resource.coverImage || resource.isbn ? "hidden" : ""}`} size={80} />
                 </div>
 
                 <div className="mb-4">
@@ -342,13 +377,21 @@ export default function ResourceDetailPage() {
                 )}
 
                 {isManager && (
-                  <button
-                    onClick={startEditing}
-                    className="w-full mt-3 border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Edit size={18} />
-                    Edit Resource
-                  </button>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={startEditing}
+                      className="flex-1 border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Edit size={18} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="border border-red-300 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -489,6 +532,28 @@ export default function ResourceDetailPage() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {showPreview && (resource.coverImage || resource.isbn) && (
+          <div
+            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-8 cursor-pointer"
+            onClick={() => setShowPreview(false)}
+          >
+            <button
+              onClick={() => setShowPreview(false)}
+              className="absolute top-4 right-4 text-white hover:text-gray-300"
+            >
+              <X size={32} />
+            </button>
+            <img
+              src={resource.coverImage
+                ? `https://books.google.com/books/content?id=${resource.coverImage}&printsec=frontcover&img=1&zoom=0`
+                : `https://covers.openlibrary.org/b/isbn/${resource.isbn}-L.jpg`}
+              alt={resource.title}
+              className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         )}
       </div>

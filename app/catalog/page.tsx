@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, ArrowLeft, ArrowRight, Star } from "lucide-react";
 
 interface Resource {
@@ -23,17 +24,19 @@ interface Tag {
 }
 
 export default function CatalogPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [resources, setResources] = useState<Resource[]>([]);
-  const [search, setSearch] = useState("");
-  const [tagFilter, setTagFilter] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [tagFilter, setTagFilter] = useState(searchParams.get("tag") || "");
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(parseInt(searchParams.get("page") || "1"));
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"gallery" | "spreadsheet">("gallery");
-  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "checked-out">("all");
-  const [sliderPage, setSliderPage] = useState(1);
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "checked-out">((searchParams.get("availability") as any) || "all");
+  const [sliderPage, setSliderPage] = useState(parseInt(searchParams.get("page") || "1"));
   const contentRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
 
@@ -57,6 +60,12 @@ export default function CatalogPage() {
     if (search) params.set("q", search);
     if (tagFilter) params.set("tag", tagFilter);
     if (availabilityFilter !== "all") params.set("availability", availabilityFilter);
+    if (page > 1) params.set("page", String(page));
+
+    // Sync to URL without navigation
+    const urlParams = params.toString();
+    router.replace(`/catalog${urlParams ? `?${urlParams}` : ""}`, { scroll: false });
+
     params.set("page", String(page));
     params.set("limit", String(PAGE_SIZE));
     fetch(`/api/resources?${params}`)

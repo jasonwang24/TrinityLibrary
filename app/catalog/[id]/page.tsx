@@ -659,7 +659,7 @@ export default function ResourceDetailPage() {
                           onChange={(e) => setReviewText(e.target.value)}
                           placeholder="Share your thoughts about this book..."
                           rows={3}
-                          maxLength={2000}
+                          maxLength={500}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                         />
                       </div>

@@ -7,7 +7,7 @@ import { z } from "zod";
 const reviewSchema = z.object({
   resourceId: z.string(),
   rating: z.number().int().min(1).max(5),
-  text: z.string().max(2000).optional(),
+  text: z.string().max(500).optional(),
 });
 
 export async function POST(req: NextRequest) {

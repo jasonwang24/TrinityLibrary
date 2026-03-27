@@ -10,6 +10,7 @@ export default function NavBar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -125,11 +126,16 @@ export default function NavBar() {
                       )}
                     </div>
                     <button
-                      onClick={() => signOut()}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                      onClick={() => { setSigningOut(true); signOut(); }}
+                      disabled={signingOut}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50"
                     >
-                      <LogOut size={16} />
-                      Sign Out
+                      {signingOut ? (
+                        <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                      ) : (
+                        <LogOut size={16} />
+                      )}
+                      {signingOut ? "Signing out..." : "Sign Out"}
                     </button>
                   </div>
                 )}

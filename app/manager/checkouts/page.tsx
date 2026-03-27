@@ -42,7 +42,7 @@ export default function ManagerCheckoutsPage() {
   if (status === "loading" || !session || session.user.role !== "MANAGER") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading...</div>
+        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -96,7 +96,7 @@ export default function ManagerCheckoutsPage() {
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="text-lg text-gray-600">Loading...</div>
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">

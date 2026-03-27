@@ -25,7 +25,7 @@ interface Tag {
 
 export default function CatalogPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-lg text-gray-600">Loading...</div></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-center"><div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" /><div className="text-sm text-gray-500">Loading catalog...</div></div></div>}>
       <CatalogContent />
     </Suspense>
   );
@@ -218,7 +218,8 @@ function CatalogContent() {
         <div ref={contentRef} style={{ minHeight: contentRef.current?.offsetHeight || "auto" }}>
         {loading ? (
           <div className="text-center py-12">
-            <div className="text-lg text-gray-600">Loading...</div>
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" />
+            <div className="text-sm text-gray-500">Loading books...</div>
           </div>
         ) : filteredResources.length === 0 ? (
           <div className="text-center py-12">

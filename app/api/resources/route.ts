@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
   const query = searchParams.get("q") || "";
   const tag = searchParams.get("tag");
   const availability = searchParams.get("availability");
-  const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "20");
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
 
   const where: any = {};
 

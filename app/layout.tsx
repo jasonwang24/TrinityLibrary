@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Providers } from "./providers";
 import NavBar from "./components/NavBar";
+import BugReportButton from "./components/BugReportButton";
 
 export const metadata: Metadata = {
   title: "Trinity Library",
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <NavBar />
           {children}
+          <BugReportButton />
         </Providers>
       </body>
     </html>

@@ -9,6 +9,7 @@ export default function BugReportButton() {
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const pathname = usePathname();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -16,13 +17,21 @@ export default function BugReportButton() {
     if (!message.trim()) return;
     setSending(true);
 
-    await fetch("/api/bug-reports", {
+    const res = await fetch("/api/bug-reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ page: pathname, message: message.trim() }),
     });
 
     setSending(false);
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Failed to send report");
+      setTimeout(() => setError(""), 4000);
+      return;
+    }
+
     setSubmitted(true);
     setMessage("");
     setTimeout(() => {
@@ -48,6 +57,11 @@ export default function BugReportButton() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="p-4">
+              {error && (
+                <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                  {error}
+                </div>
+              )}
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}

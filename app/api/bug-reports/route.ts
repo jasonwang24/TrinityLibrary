@@ -11,8 +11,28 @@ const bugReportSchema = z.object({
   message: z.string().min(1).max(1000),
 });
 
+// Simple in-memory rate limit: 3 reports per hour per user/IP
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT = 3;
+const RATE_WINDOW = 60 * 60 * 1000; // 1 hour
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const timestamps = (rateLimitMap.get(key) || []).filter((t) => now - t < RATE_WINDOW);
+  if (timestamps.length >= RATE_LIMIT) return true;
+  timestamps.push(now);
+  rateLimitMap.set(key, timestamps);
+  return false;
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
+  const rateLimitKey = session?.user?.id || req.headers.get("x-forwarded-for") || "unknown";
+
+  if (isRateLimited(rateLimitKey)) {
+    return NextResponse.json({ error: "Please wait before submitting another report" }, { status: 429 });
+  }
+
   const body = await req.json();
   const parsed = bugReportSchema.safeParse(body);
 

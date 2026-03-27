@@ -66,7 +66,7 @@ function CatalogContent() {
   }, [page]);
 
   useEffect(() => {
-    if (resources.length === 0) setLoading(true);
+    setLoading(true);
     const scrollY = window.scrollY;
     const params = new URLSearchParams();
     if (search) params.set("q", search);
@@ -215,13 +215,14 @@ function CatalogContent() {
           Showing {filteredResources.length} of {total} books
         </div>
 
-        <div ref={contentRef} style={{ minHeight: contentRef.current?.offsetHeight || "auto" }}>
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" />
-            <div className="text-sm text-gray-500">Loading books...</div>
+        {loading && (
+          <div className="fixed inset-0 bg-white/50 z-50 flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
           </div>
-        ) : filteredResources.length === 0 ? (
+        )}
+
+        <div ref={contentRef} style={{ minHeight: contentRef.current?.offsetHeight || "auto" }}>
+        {filteredResources.length === 0 && !loading ? (
           <div className="text-center py-12">
             <BookOpen className="mx-auto text-gray-400 mb-4" size={48} />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No books found</h3>

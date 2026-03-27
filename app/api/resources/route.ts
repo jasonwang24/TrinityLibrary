@@ -44,36 +44,49 @@ export async function GET(req: NextRequest) {
     where.copies = { every: { status: { not: "AVAILABLE" } } };
   }
 
-  const [resourcesUnsorted, total] = await Promise.all([
-    prisma.resource.findMany({
-      where,
-      include: {
-        copies: { select: { id: true, status: true, barcode: true } },
-        tags: { include: { tag: true } },
-        reviews: { select: { rating: true } },
-      },
-      orderBy: { title: "asc" },
-    }),
-    prisma.resource.count({ where }),
-  ]);
+  // Get sorted IDs using raw SQL (pushes non-ASCII titles to end)
+  const sortedIds = await prisma.$queryRawUnsafe<{ id: string }[]>(
+    `SELECT id FROM "Resource" ORDER BY (title ~ '^[\\x00-\\x7F]') DESC, title ASC`
+  );
+  const orderedIds = sortedIds.map((r) => r.id);
 
-  // Sort non-ASCII titles (e.g. Chinese) to the end
-  const isAscii = (s: string) => /^[\x00-\x7F]/.test(s);
-  resourcesUnsorted.sort((a, b) => {
-    const aAscii = isAscii(a.title);
-    const bAscii = isAscii(b.title);
-    if (aAscii === bAscii) return a.title.localeCompare(b.title);
-    return aAscii ? -1 : 1;
+  // Apply where filter by fetching matching IDs
+  const total = await prisma.resource.count({ where });
+  const matchingResources = where && Object.keys(where).length > 0
+    ? await prisma.resource.findMany({ where, select: { id: true } })
+    : null;
+  const matchingIds = matchingResources ? new Set(matchingResources.map((r) => r.id)) : null;
+  const filteredIds = matchingIds
+    ? orderedIds.filter((id) => matchingIds.has(id))
+    : orderedIds;
+  const pageIds = filteredIds.slice((page - 1) * limit, page * limit);
+
+  const resourcesUnordered = await prisma.resource.findMany({
+    where: { id: { in: pageIds } },
+    select: {
+      id: true,
+      title: true,
+      author: true,
+      isbn: true,
+      coverImage: true,
+      type: true,
+      copies: { select: { id: true, status: true } },
+      tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+      _count: { select: { reviews: true } },
+      reviews: { select: { rating: true } },
+    },
   });
 
-  const resources = resourcesUnsorted.slice((page - 1) * limit, page * limit);
+  // Restore the sorted order
+  const idOrder = new Map(pageIds.map((id, i) => [id, i]));
+  const resources = resourcesUnordered.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
 
   const resourcesWithRating = resources.map((r) => {
     const avgRating = r.reviews.length > 0
       ? r.reviews.reduce((sum, rev) => sum + rev.rating, 0) / r.reviews.length
       : null;
-    const { reviews, ...rest } = r;
-    return { ...rest, _avgRating: avgRating, _reviewCount: reviews.length };
+    const { reviews, _count, ...rest } = r;
+    return { ...rest, _avgRating: avgRating, _reviewCount: _count.reviews };
   });
 
   return NextResponse.json({ resources: resourcesWithRating, total, page, totalPages: Math.ceil(total / limit) });

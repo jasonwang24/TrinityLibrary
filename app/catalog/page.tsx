@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, ArrowLeft, ArrowRight, Star } from "lucide-react";
 
 interface Resource {
@@ -24,8 +24,15 @@ interface Tag {
 }
 
 export default function CatalogPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-lg text-gray-600">Loading...</div></div>}>
+      <CatalogContent />
+    </Suspense>
+  );
+}
+
+function CatalogContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [resources, setResources] = useState<Resource[]>([]);
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [tagFilter, setTagFilter] = useState(searchParams.get("tag") || "");
@@ -38,6 +45,7 @@ export default function CatalogPage() {
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "checked-out">((searchParams.get("availability") as any) || "all");
   const [sliderPage, setSliderPage] = useState(parseInt(searchParams.get("page") || "1"));
   const contentRef = useRef<HTMLDivElement>(null);
+  const isInitialRender = useRef(true);
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -45,6 +53,10 @@ export default function CatalogPage() {
   }, []);
 
   useEffect(() => {
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
     setPage(1);
     setSliderPage(1);
   }, [search, tagFilter, availabilityFilter]);
@@ -62,9 +74,9 @@ export default function CatalogPage() {
     if (availabilityFilter !== "all") params.set("availability", availabilityFilter);
     if (page > 1) params.set("page", String(page));
 
-    // Sync to URL without navigation
+    // Sync to URL without triggering re-render
     const urlParams = params.toString();
-    router.replace(`/catalog${urlParams ? `?${urlParams}` : ""}`, { scroll: false });
+    window.history.replaceState(null, "", `/catalog${urlParams ? `?${urlParams}` : ""}`);
 
     params.set("page", String(page));
     params.set("limit", String(PAGE_SIZE));
@@ -231,6 +243,7 @@ export default function CatalogPage() {
                           ? `https://books.google.com/books/content?id=${r.coverImage}&printsec=frontcover&img=1&zoom=3`
                           : `https://covers.openlibrary.org/b/isbn/${r.isbn}-L.jpg`}
                         alt={r.title}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                         onLoad={(e) => {
                           if (e.currentTarget.naturalWidth <= 1) {

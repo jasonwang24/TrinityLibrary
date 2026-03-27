@@ -2,8 +2,9 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, ArrowLeft, ArrowRight, Star } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, ArrowLeft, ArrowRight, Star, Shuffle } from "lucide-react";
+import { useEasterEgg } from "../providers";
 
 interface Resource {
   id: string;
@@ -33,8 +34,12 @@ export default function CatalogPage() {
 
 function CatalogContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { trigger: triggerEasterEgg } = useEasterEgg();
+  const easterEggFired = useRef(false);
   const [resources, setResources] = useState<Resource[]>([]);
   const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [tagFilter, setTagFilter] = useState(searchParams.get("tag") || "");
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +57,12 @@ function CatalogContent() {
     fetch("/api/tags").then((r) => r.json()).then(setTags);
   }, []);
 
+  // Debounce search input by 400ms
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   useEffect(() => {
     if (isInitialRender.current) {
       isInitialRender.current = false;
@@ -59,7 +70,16 @@ function CatalogContent() {
     }
     setPage(1);
     setSliderPage(1);
-  }, [search, tagFilter, availabilityFilter]);
+  }, [debouncedSearch, tagFilter, availabilityFilter]);
+
+  useEffect(() => {
+    if (search.toLowerCase() === "trinity library" && !easterEggFired.current) {
+      easterEggFired.current = true;
+      triggerEasterEgg();
+    } else if (search.toLowerCase() !== "trinity library") {
+      easterEggFired.current = false;
+    }
+  }, [search, triggerEasterEgg]);
 
   useEffect(() => {
     setSliderPage(page);
@@ -69,7 +89,7 @@ function CatalogContent() {
     setLoading(true);
     const scrollY = window.scrollY;
     const params = new URLSearchParams();
-    if (search) params.set("q", search);
+    if (debouncedSearch) params.set("q", debouncedSearch);
     if (tagFilter) params.set("tag", tagFilter);
     if (availabilityFilter !== "all") params.set("availability", availabilityFilter);
     if (page > 1) params.set("page", String(page));
@@ -89,10 +109,25 @@ function CatalogContent() {
         setLoading(false);
         requestAnimationFrame(() => window.scrollTo(0, scrollY));
       });
-  }, [search, tagFilter, availabilityFilter, page]);
+  }, [debouncedSearch, tagFilter, availabilityFilter, page]);
 
   const availableCount = (copies: Resource["copies"]) =>
     (copies || []).filter((c) => c.status === "AVAILABLE").length;
+
+  const [surpriseLoading, setSurpriseLoading] = useState(false);
+
+  async function pickRandomBook() {
+    setSurpriseLoading(true);
+    const res = await fetch("/api/resources?page=1&limit=200");
+    const data = await res.json();
+    if (data.resources?.length > 0) {
+      const random = data.resources[Math.floor(Math.random() * data.resources.length)];
+      router.push(`/catalog/${random.id}`);
+      // Don't set surpriseLoading to false — let it spin until navigation completes
+    } else {
+      setSurpriseLoading(false);
+    }
+  }
 
   const filteredResources = resources;
 
@@ -131,15 +166,30 @@ function CatalogContent() {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search by title, author, or ISBN..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+          <div className="flex gap-3 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search by title, author, or ISBN..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            </div>
+            <button
+              onClick={pickRandomBook}
+              disabled={surpriseLoading}
+              className="px-4 py-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap text-sm disabled:opacity-50"
+              title="Pick a random book"
+            >
+              {surpriseLoading ? (
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+              ) : (
+                <Shuffle size={16} />
+              )}
+              {surpriseLoading ? "Picking..." : "Surprise me"}
+            </button>
           </div>
 
           <div className="mb-4">

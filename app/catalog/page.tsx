@@ -221,7 +221,7 @@ function CatalogContent() {
           </div>
         )}
 
-        <div ref={contentRef} style={{ minHeight: contentRef.current?.offsetHeight || "auto" }}>
+        <div ref={contentRef}>
         {filteredResources.length === 0 && !loading ? (
           <div className="text-center py-12">
             <BookOpen className="mx-auto text-gray-400 mb-4" size={48} />

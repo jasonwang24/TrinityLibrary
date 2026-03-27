@@ -131,8 +131,9 @@ model Checkout {
   userId       String
   checkedOutAt DateTime  @default(now())
   dueDate      DateTime
-  returnedAt   DateTime?
-  renewals     Int       @default(0)
+  returnedAt       DateTime?
+  renewals         Int       @default(0)
+  overdueNotified  Boolean   @default(false)
   copy         Copy      @relation(fields: [copyId], references: [id])
   user         User      @relation(fields: [userId], references: [id])
 

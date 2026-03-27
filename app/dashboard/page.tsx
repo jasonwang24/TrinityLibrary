@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle } from "lucide-react";
+import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle, History } from "lucide-react";
 
 interface Checkout {
   id: string;
@@ -30,11 +30,21 @@ interface Hold {
   };
 }
 
+interface HistoryItem {
+  id: string;
+  checkedOutAt: string;
+  returnedAt: string;
+  copy: {
+    resource: { id: string; title: string; author: string };
+  };
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [checkouts, setCheckouts] = useState<Checkout[]>([]);
   const [holds, setHolds] = useState<Hold[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -48,6 +58,7 @@ export default function DashboardPage() {
   function fetchData() {
     fetch("/api/user/checkouts").then((r) => r.json()).then(setCheckouts);
     fetch("/api/user/holds").then((r) => r.json()).then(setHolds);
+    fetch("/api/user/history").then((r) => r.json()).then(setHistory);
   }
 
   async function handleReturn(barcode: string) {
@@ -334,6 +345,44 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {history.length > 0 && (
+          <div className="mt-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <History size={24} />
+              Reading History
+            </h2>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Book</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Checked Out</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Returned</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {history.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <Link href={`/catalog/${item.copy.resource.id}`} className="font-medium text-blue-600 hover:underline">
+                          {item.copy.resource.title}
+                        </Link>
+                        <div className="text-sm text-gray-500">{item.copy.resource.author}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {formatDate(item.checkedOutAt)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {formatDate(item.returnedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

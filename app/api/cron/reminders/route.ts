@@ -1,36 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { Resend } from "resend";
 
 const HOLD_PICKUP_DAYS = 3;
+const MAX_EMAILS_PER_RUN = 10;
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(23, 59, 59, 999);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
 
-  const dueSoon = await prisma.checkout.findMany({
+  // Find overdue checkouts that haven't been notified yet
+  const overdueUnnotified = await prisma.checkout.findMany({
     where: {
       returnedAt: null,
-      dueDate: { lte: tomorrow },
+      dueDate: { lt: now },
+      overdueNotified: false,
     },
     include: {
       user: { select: { name: true, email: true } },
       copy: { include: { resource: { select: { title: true } } } },
     },
+    take: MAX_EMAILS_PER_RUN,
   });
 
-  const overdue = dueSoon.filter((c) => new Date(c.dueDate) < today);
-  const dueTomorrow = dueSoon.filter(
-    (c) => new Date(c.dueDate) >= today && new Date(c.dueDate) <= tomorrow
-  );
+  let emailsSent = 0;
+  for (const checkout of overdueUnnotified) {
+    try {
+      await resend.emails.send({
+        from: "Trinity Library <onboarding@resend.dev>",
+        to: checkout.user.email,
+        subject: `Overdue: "${checkout.copy.resource.title}"`,
+        text: `Hi ${checkout.user.name},\n\nYour library book "${checkout.copy.resource.title}" was due on ${new Date(checkout.dueDate).toLocaleDateString()}. Please return it as soon as possible.\n\nThanks,\nTrinity Library`,
+      });
+      await prisma.checkout.update({
+        where: { id: checkout.id },
+        data: { overdueNotified: true },
+      });
+      emailsSent++;
+    } catch (e) {
+      console.error(`Failed to email ${checkout.user.email}:`, e);
+    }
+  }
 
+  // Handle expired holds
   const expiryCutoff = new Date();
   expiryCutoff.setDate(expiryCutoff.getDate() - HOLD_PICKUP_DAYS);
 
@@ -78,19 +96,5 @@ export async function GET(req: NextRequest) {
     holdsExpired++;
   }
 
-  console.log(`Reminders: ${dueTomorrow.length} due tomorrow, ${overdue.length} overdue, ${holdsExpired} holds expired`);
-
-  return NextResponse.json({
-    dueTomorrow: dueTomorrow.map((c) => ({
-      user: c.user.email,
-      book: c.copy.resource.title,
-      dueDate: c.dueDate,
-    })),
-    overdue: overdue.map((c) => ({
-      user: c.user.email,
-      book: c.copy.resource.title,
-      dueDate: c.dueDate,
-    })),
-    holdsExpired,
-  });
+  return NextResponse.json({ emailsSent, holdsExpired });
 }

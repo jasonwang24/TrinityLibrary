@@ -9,23 +9,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { copyId, barcode } = await req.json();
+  const { copyId, barcode, isbn } = await req.json();
 
-  const copy = await prisma.copy.findFirst({
-    where: copyId ? { id: copyId } : { barcode },
-    include: { resource: true },
-  });
+  let copy;
+  let activeCheckout;
 
-  if (!copy) {
-    return NextResponse.json({ error: "Copy not found" }, { status: 404 });
-  }
+  if (isbn) {
+    // Find this user's active checkout by ISBN
+    const checkout = await prisma.checkout.findFirst({
+      where: {
+        returnedAt: null,
+        userId: session.user.id,
+        copy: { resource: { isbn } },
+      },
+      include: { copy: { include: { resource: true } } },
+    });
+    if (!checkout) {
+      return NextResponse.json({ error: "You don't have this book checked out" }, { status: 400 });
+    }
+    copy = checkout.copy;
+    activeCheckout = checkout;
+  } else {
+    copy = await prisma.copy.findFirst({
+      where: copyId ? { id: copyId } : { barcode },
+      include: { resource: true },
+    });
 
-  const activeCheckout = await prisma.checkout.findFirst({
-    where: { copyId: copy.id, returnedAt: null },
-  });
+    if (!copy) {
+      return NextResponse.json({ error: "Copy not found" }, { status: 404 });
+    }
 
-  if (!activeCheckout) {
-    return NextResponse.json({ error: "No active checkout for this copy" }, { status: 400 });
+    activeCheckout = await prisma.checkout.findFirst({
+      where: { copyId: copy.id, returnedAt: null },
+    });
+
+    if (!activeCheckout) {
+      return NextResponse.json({ error: "No active checkout for this copy" }, { status: 400 });
+    }
   }
 
   const isOwner = activeCheckout.userId === session.user.id;

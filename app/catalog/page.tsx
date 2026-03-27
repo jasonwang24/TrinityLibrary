@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, ArrowLeft, ArrowRight } from "lucide-react";
+import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, ArrowLeft, ArrowRight, Star } from "lucide-react";
 
 interface Resource {
   id: string;
@@ -12,6 +12,8 @@ interface Resource {
   coverImage?: string;
   copies: { id: string; status: string }[];
   tags: { tag: { id: string; name: string; color: string } }[];
+  _avgRating: number | null;
+  _reviewCount: number;
 }
 
 interface Tag {
@@ -42,7 +44,7 @@ export default function CatalogPage() {
   useEffect(() => {
     setPage(1);
     setSliderPage(1);
-  }, [search, tagFilter]);
+  }, [search, tagFilter, availabilityFilter]);
 
   useEffect(() => {
     setSliderPage(page);
@@ -54,6 +56,7 @@ export default function CatalogPage() {
     const params = new URLSearchParams();
     if (search) params.set("q", search);
     if (tagFilter) params.set("tag", tagFilter);
+    if (availabilityFilter !== "all") params.set("availability", availabilityFilter);
     params.set("page", String(page));
     params.set("limit", String(PAGE_SIZE));
     fetch(`/api/resources?${params}`)
@@ -65,16 +68,12 @@ export default function CatalogPage() {
         setLoading(false);
         requestAnimationFrame(() => window.scrollTo(0, scrollY));
       });
-  }, [search, tagFilter, page]);
+  }, [search, tagFilter, availabilityFilter, page]);
 
   const availableCount = (copies: Resource["copies"]) =>
     (copies || []).filter((c) => c.status === "AVAILABLE").length;
 
-  const filteredResources = resources.filter((r) => {
-    if (availabilityFilter === "available") return availableCount(r.copies) > 0;
-    if (availabilityFilter === "checked-out") return availableCount(r.copies) === 0;
-    return true;
-  });
+  const filteredResources = resources;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -105,7 +104,7 @@ export default function CatalogPage() {
               }`}
             >
               <List size={18} />
-              Spreadsheet
+              List
             </button>
           </div>
         </div>
@@ -253,7 +252,21 @@ export default function CatalogPage() {
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{r.title}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{r.author}</p>
+                    <p className="text-sm text-gray-600 mb-1">{r.author}</p>
+                    {r._avgRating !== null && (
+                      <div className="flex items-center gap-1 mb-1">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              size={12}
+                              className={star <= Math.round(r._avgRating!) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-500">{r._avgRating.toFixed(1)}</span>
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-1 mb-2">
                       {r.tags.slice(0, 2).map((t) => (
                         <span

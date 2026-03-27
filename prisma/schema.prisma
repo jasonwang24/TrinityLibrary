@@ -48,6 +48,7 @@ model User {
   checkouts    Checkout[]
   holds        Hold[]
   accounts     Account[]
+  reviews      Review[]
 }
 
 model Account {
@@ -84,6 +85,7 @@ model Resource {
   copies      Copy[]
   tags        ResourceTag[]
   holds       Hold[]
+  reviews     Review[]
 
   @@index([title])
   @@index([author])
@@ -150,4 +152,19 @@ model Hold {
 
   @@index([resourceId])
   @@index([userId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  resourceId String
+  userId     String
+  rating     Int
+  text       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([resourceId, userId])
+  @@index([resourceId])
 }

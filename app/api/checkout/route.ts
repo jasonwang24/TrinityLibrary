@@ -11,12 +11,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { copyId, barcode } = await req.json();
+  const { copyId, barcode, isbn } = await req.json();
 
-  const copy = await prisma.copy.findFirst({
-    where: copyId ? { id: copyId } : { barcode },
-    include: { resource: true },
-  });
+  let copy;
+  if (isbn) {
+    // Find an available copy by ISBN
+    const resource = await prisma.resource.findFirst({
+      where: { isbn },
+      include: { copies: { where: { status: "AVAILABLE" }, take: 1 } },
+    });
+    if (!resource) {
+      return NextResponse.json({ error: "No book found with that ISBN" }, { status: 404 });
+    }
+    if (resource.copies.length === 0) {
+      return NextResponse.json({ error: `"${resource.title}" has no available copies` }, { status: 400 });
+    }
+    copy = await prisma.copy.findFirst({
+      where: { id: resource.copies[0].id },
+      include: { resource: true },
+    });
+  } else {
+    copy = await prisma.copy.findFirst({
+      where: copyId ? { id: copyId } : { barcode },
+      include: { resource: true },
+    });
+  }
 
   if (!copy) {
     return NextResponse.json({ error: "Copy not found" }, { status: 404 });

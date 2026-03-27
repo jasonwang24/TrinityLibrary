@@ -1,10 +1,10 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle } from "lucide-react";
+import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle, QrCode, Camera } from "lucide-react";
 
 interface Checkout {
   id: string;
@@ -36,6 +36,10 @@ export default function DashboardPage() {
   const [checkouts, setCheckouts] = useState<Checkout[]>([]);
   const [holds, setHolds] = useState<Hold[]>([]);
   const [message, setMessage] = useState("");
+  const [scanBarcode, setScanBarcode] = useState("");
+  const [scanMode, setScanMode] = useState<"checkout" | "checkin">("checkout");
+  const [scanning, setScanning] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -126,6 +130,44 @@ export default function DashboardPage() {
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
+  async function startScanner() {
+    setScanning(true);
+    try {
+      const { BrowserMultiFormatReader } = await import("@zxing/browser");
+      const reader = new BrowserMultiFormatReader();
+      if (videoRef.current) {
+        const result = await reader.decodeOnceFromVideoDevice(undefined, videoRef.current);
+        setScanBarcode(result.getText());
+        setScanning(false);
+      }
+    } catch {
+      setMessage("Camera access denied or scanner error");
+      setScanning(false);
+    }
+  }
+
+  async function handleScanSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!scanBarcode) return;
+    const endpoint = scanMode === "checkout" ? "/api/checkout" : "/api/checkin";
+    // Clean the scanned value — strip any hyphens and whitespace
+    const cleaned = scanBarcode.replace(/[-\s]/g, "");
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isbn: cleaned }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setMessage(`${scanMode === "checkout" ? "Checked out" : "Returned"} successfully!`);
+      setScanBarcode("");
+      fetchData();
+    } else {
+      setMessage(data.error);
+    }
+    setTimeout(() => setMessage(""), 3000);
+  }
+
   const readyHolds = holds.filter((h) => h.status === "FULFILLED");
   const activeHolds = holds.filter((h) => h.status === "ACTIVE");
   const isManager = session.user.role === "MANAGER";
@@ -170,6 +212,58 @@ export default function DashboardPage() {
             {message}
           </div>
         )}
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <QrCode size={20} />
+            Scan Book
+          </h2>
+          <div className="flex gap-2 mb-4 bg-gray-100 rounded-lg p-1 max-w-xs">
+            <button
+              onClick={() => setScanMode("checkout")}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                scanMode === "checkout" ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Check Out
+            </button>
+            <button
+              onClick={() => setScanMode("checkin")}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                scanMode === "checkin" ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Return
+            </button>
+          </div>
+          {scanning && (
+            <video ref={videoRef} className="w-full max-w-sm rounded-lg mb-4" />
+          )}
+          <div className="flex gap-3 items-center">
+            <button
+              onClick={startScanner}
+              disabled={scanning}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <Camera size={18} />
+              {scanning ? "Scanning..." : "Scan"}
+            </button>
+            <form onSubmit={handleScanSubmit} className="flex gap-2 flex-1">
+              <input
+                placeholder="Or type ISBN..."
+                value={scanBarcode}
+                onChange={(e) => setScanBarcode(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              />
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
+              >
+                {scanMode === "checkout" ? "Check Out" : "Return"}
+              </button>
+            </form>
+          </div>
+        </div>
 
         {readyHolds.length > 0 && (
           <div className="mb-6">

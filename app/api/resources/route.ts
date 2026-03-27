@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q") || "";
   const tag = searchParams.get("tag");
+  const availability = searchParams.get("availability");
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
 
@@ -29,29 +30,53 @@ export async function GET(req: NextRequest) {
 
   if (query) {
     where.OR = [
-      { title: { contains: query } },
-      { author: { contains: query } },
-      { isbn: { contains: query } },
+      { title: { contains: query, mode: "insensitive" } },
+      { author: { contains: query, mode: "insensitive" } },
+      { isbn: { contains: query, mode: "insensitive" } },
     ];
   }
 
   if (tag) where.tags = { some: { tag: { name: tag } } };
 
-  const [resources, total] = await Promise.all([
+  if (availability === "available") {
+    where.copies = { some: { status: "AVAILABLE" } };
+  } else if (availability === "checked-out") {
+    where.copies = { every: { status: { not: "AVAILABLE" } } };
+  }
+
+  const [resourcesUnsorted, total] = await Promise.all([
     prisma.resource.findMany({
       where,
       include: {
         copies: { select: { id: true, status: true, barcode: true } },
         tags: { include: { tag: true } },
+        reviews: { select: { rating: true } },
       },
-      skip: (page - 1) * limit,
-      take: limit,
       orderBy: { title: "asc" },
     }),
     prisma.resource.count({ where }),
   ]);
 
-  return NextResponse.json({ resources, total, page, totalPages: Math.ceil(total / limit) });
+  // Sort non-ASCII titles (e.g. Chinese) to the end
+  const isAscii = (s: string) => /^[\x00-\x7F]/.test(s);
+  resourcesUnsorted.sort((a, b) => {
+    const aAscii = isAscii(a.title);
+    const bAscii = isAscii(b.title);
+    if (aAscii === bAscii) return a.title.localeCompare(b.title);
+    return aAscii ? -1 : 1;
+  });
+
+  const resources = resourcesUnsorted.slice((page - 1) * limit, page * limit);
+
+  const resourcesWithRating = resources.map((r) => {
+    const avgRating = r.reviews.length > 0
+      ? r.reviews.reduce((sum, rev) => sum + rev.rating, 0) / r.reviews.length
+      : null;
+    const { reviews, ...rest } = r;
+    return { ...rest, _avgRating: avgRating, _reviewCount: reviews.length };
+  });
+
+  return NextResponse.json({ resources: resourcesWithRating, total, page, totalPages: Math.ceil(total / limit) });
 }
 
 export async function POST(req: NextRequest) {

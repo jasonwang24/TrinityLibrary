@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, XCircle, BookOpen, Edit, Calendar, X, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, BookOpen, Edit, Calendar, X, Trash2, Star } from "lucide-react";
 
 interface ResourceDetail {
   id: string;
@@ -26,6 +26,8 @@ interface ResourceDetail {
   }[];
   tags: { tag: { id: string; name: string; color: string } }[];
   holds: { id: string; user: { id: string; name: string }; createdAt: string }[];
+  reviews: { id: string; rating: number; text?: string; createdAt: string; user: { id: string; name: string } }[];
+  _avgRating: number | null;
 }
 
 interface Tag {
@@ -44,6 +46,10 @@ export default function ResourceDetailPage() {
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [editing, setEditing] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewHover, setReviewHover] = useState(0);
+  const [showReviewForm, setShowReviewForm] = useState(false);
   const [editForm, setEditForm] = useState({
     title: "",
     author: "",
@@ -58,6 +64,14 @@ export default function ResourceDetailPage() {
   useEffect(() => {
     fetchResource();
   }, [id]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && showPreview) setShowPreview(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showPreview]);
 
   useEffect(() => {
     if (editing) {
@@ -169,6 +183,45 @@ export default function ResourceDetailPage() {
     } else {
       showMessage("Failed to cancel hold", "error");
     }
+  }
+
+  async function handleSubmitReview() {
+    if (reviewRating === 0) return;
+    const res = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resourceId: id, rating: reviewRating, text: reviewText || undefined }),
+    });
+    if (res.ok) {
+      showMessage("Review submitted!");
+      setShowReviewForm(false);
+      setReviewRating(0);
+      setReviewText("");
+      fetchResource();
+    } else {
+      const data = await res.json();
+      showMessage(data.error, "error");
+    }
+  }
+
+  async function handleDeleteReview(reviewId: string) {
+    const res = await fetch("/api/reviews", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewId }),
+    });
+    if (res.ok) {
+      showMessage("Review deleted.");
+      fetchResource();
+    } else {
+      showMessage("Failed to delete review", "error");
+    }
+  }
+
+  function startEditReview(review: ResourceDetail["reviews"][0]) {
+    setReviewRating(review.rating);
+    setReviewText(review.text || "");
+    setShowReviewForm(true);
   }
 
   function toggleTag(tagId: string) {
@@ -397,7 +450,25 @@ export default function ResourceDetailPage() {
 
               <div className="md:col-span-2">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{resource.title}</h1>
-                <p className="text-xl text-gray-600 mb-6">by {resource.author}</p>
+                <div className="flex items-center gap-3 mb-1">
+                  <p className="text-xl text-gray-600">by {resource.author}</p>
+                  {resource._avgRating !== null && (
+                    <div className="flex items-center gap-1">
+                      <div className="flex">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            size={16}
+                            className={star <= Math.round(resource._avgRating!) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-gray-500">
+                        {resource._avgRating.toFixed(1)} ({resource.reviews.length})
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex flex-wrap gap-2 mb-6">
                   {resource.tags.map((t) => (
@@ -530,6 +601,127 @@ export default function ResourceDetailPage() {
                     </div>
                   </div>
                 )}
+
+                <div className="border-t border-gray-200 pt-6 mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Reviews {resource.reviews.length > 0 && `(${resource.reviews.length})`}
+                    </h2>
+                    {session && !showReviewForm && (() => {
+                      const existingReview = resource.reviews.find((r) => r.user.id === session.user.id);
+                      return existingReview ? (
+                        <button
+                          onClick={() => startEditReview(existingReview)}
+                          className="text-sm text-blue-600 hover:underline font-medium"
+                        >
+                          Edit Your Review
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setShowReviewForm(true)}
+                          className="text-sm text-blue-600 hover:underline font-medium"
+                        >
+                          Write a Review
+                        </button>
+                      );
+                    })()}
+                  </div>
+
+                  {showReviewForm && (
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setReviewRating(star)}
+                              onMouseEnter={() => setReviewHover(star)}
+                              onMouseLeave={() => setReviewHover(0)}
+                            >
+                              <Star
+                                size={24}
+                                className={`transition-colors ${
+                                  star <= (reviewHover || reviewRating)
+                                    ? "text-yellow-400 fill-yellow-400"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Review (optional)</label>
+                        <textarea
+                          value={reviewText}
+                          onChange={(e) => setReviewText(e.target.value)}
+                          placeholder="Share your thoughts about this book..."
+                          rows={3}
+                          maxLength={2000}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSubmitReview}
+                          disabled={reviewRating === 0}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        >
+                          Submit Review
+                        </button>
+                        <button
+                          onClick={() => { setShowReviewForm(false); setReviewRating(0); setReviewText(""); }}
+                          className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {resource.reviews.length === 0 && !showReviewForm ? (
+                    <p className="text-sm text-gray-500">No reviews yet. Be the first to review this book!</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {resource.reviews.map((review) => (
+                        <div key={review.id} className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium text-gray-900">{review.user.name}</span>
+                                <div className="flex">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      size={14}
+                                      className={star <= review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(review.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              {review.text && (
+                                <p className="text-sm text-gray-700">{review.text}</p>
+                              )}
+                            </div>
+                            {session && (review.user.id === session.user.id || isManager) && (
+                              <button
+                                onClick={() => handleDeleteReview(review.id)}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

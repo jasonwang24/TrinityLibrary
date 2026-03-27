@@ -23,6 +23,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         include: { user: { select: { id: true, name: true } } },
         orderBy: { createdAt: "asc" },
       },
+      reviews: {
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -30,7 +34,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(resource);
+  const avgRating = resource.reviews.length > 0
+    ? resource.reviews.reduce((sum, r) => sum + r.rating, 0) / resource.reviews.length
+    : null;
+
+  return NextResponse.json({ ...resource, _avgRating: avgRating });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Users, BookOpen, Plus, Search, Settings, Tag, QrCode } from "lucide-react";
+import { Users, BookOpen, Plus, Search, Settings, Tag, QrCode, ClipboardList } from "lucide-react";
 
 export default function ManagerPage() {
   const { data: session, status } = useSession();
@@ -44,6 +44,13 @@ export default function ManagerPage() {
       title: "Manage Tags",
       description: "Create and edit custom tags",
       color: "bg-purple-100 text-purple-600",
+    },
+    {
+      href: "/manager/checkouts",
+      icon: <ClipboardList size={32} />,
+      title: "Active Checkouts",
+      description: "View all checked out books and who has them",
+      color: "bg-red-100 text-red-600",
     },
     {
       href: "/catalog",

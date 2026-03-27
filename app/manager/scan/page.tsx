@@ -44,10 +44,13 @@ export default function ScanPage() {
     if (!barcode) return;
 
     const endpoint = mode === "checkout" ? "/api/checkout" : "/api/checkin";
+    const cleaned = barcode.replace(/[-\s]/g, "");
+    // If it looks like an ISBN (digits, possibly with X), send as isbn; otherwise as barcode
+    const isIsbn = /^[\dX]{10,13}$/i.test(cleaned);
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ barcode }),
+      body: JSON.stringify(isIsbn ? { isbn: cleaned } : { barcode }),
     });
 
     const data = await res.json();
@@ -147,7 +150,7 @@ export default function ScanPage() {
           </div>
 
           <div className="border-t border-gray-200 pt-6">
-            <p className="text-sm font-medium text-gray-700 mb-3 text-center">Or enter barcode manually</p>
+            <p className="text-sm font-medium text-gray-700 mb-3 text-center">Or enter ISBN / barcode manually</p>
             <form onSubmit={handleSubmit} className="flex gap-3 max-w-md mx-auto">
               <input
                 placeholder="Enter barcode..."

@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
+import type { IScannerControls } from "@zxing/browser";
 import Link from "next/link";
 import { ArrowLeft, QrCode, Camera, AlertCircle, CheckCircle } from "lucide-react";
 
@@ -15,23 +16,47 @@ export default function ScanPage() {
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
 
   useEffect(() => {
     if (status === "authenticated" && session.user.role !== "MANAGER") router.push("/");
     if (status === "unauthenticated") router.push("/login");
   }, [status, session, router]);
 
+  useEffect(() => {
+    return () => {
+      controlsRef.current?.stop();
+      controlsRef.current = null;
+    };
+  }, []);
+
+  function stopScanner() {
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+    setScanning(false);
+  }
+
   async function startScanner() {
     setScanning(true);
+    setMessage("");
     try {
       const { BrowserMultiFormatReader } = await import("@zxing/browser");
       const reader = new BrowserMultiFormatReader();
 
-      if (videoRef.current) {
-        const result = await reader.decodeOnceFromVideoDevice(undefined, videoRef.current);
-        setBarcode(result.getText());
-        setScanning(false);
-      }
+      if (!videoRef.current) throw new Error("Video element not mounted");
+
+      controlsRef.current = await reader.decodeFromVideoDevice(
+        undefined,
+        videoRef.current,
+        (result, _err, controls) => {
+          if (result) {
+            setBarcode(result.getText());
+            controls.stop();
+            controlsRef.current = null;
+            setScanning(false);
+          }
+        }
+      );
     } catch {
       setMessage("Camera access denied or scanner error");
       setMessageType("error");
@@ -126,9 +151,14 @@ export default function ScanPage() {
           )}
 
           <div className="mb-6">
-            {scanning ? (
-              <video ref={videoRef} className="w-full max-w-md mx-auto rounded-lg" />
-            ) : (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full max-w-md mx-auto rounded-lg ${scanning ? "" : "hidden"}`}
+            />
+            {!scanning && (
               <div className="aspect-square max-w-md mx-auto bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
                 <div className="text-center">
                   <Camera className="mx-auto text-gray-400 mb-4" size={64} />
@@ -139,14 +169,23 @@ export default function ScanPage() {
           </div>
 
           <div className="flex gap-3 justify-center mb-6">
-            <button
-              onClick={startScanner}
-              disabled={scanning}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
-              <Camera size={20} />
-              {scanning ? "Scanning..." : "Start Scanning"}
-            </button>
+            {scanning ? (
+              <button
+                onClick={stopScanner}
+                className="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
+              >
+                <Camera size={20} />
+                Stop Scanning
+              </button>
+            ) : (
+              <button
+                onClick={startScanner}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Camera size={20} />
+                Start Scanning
+              </button>
+            )}
           </div>
 
           <div className="border-t border-gray-200 pt-6">

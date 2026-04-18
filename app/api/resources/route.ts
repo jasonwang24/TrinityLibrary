@@ -16,6 +16,7 @@ const createResourceSchema = z.object({
   digitalUrl: z.string().url().optional(),
   tagIds: z.array(z.string()).optional(),
   copies: z.number().min(1).default(1),
+  location: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -88,11 +89,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { tagIds, copies: copyCount, ...data } = parsed.data;
+  const { tagIds, copies: copyCount, location, ...data } = parsed.data;
 
   const copiesData = Array.from({ length: copyCount }, (_, i) => ({
     barcode: `LIB-${Date.now()}-${i + 1}`,
     status: "AVAILABLE" as const,
+    location: location || null,
   }));
 
   const resource = await prisma.resource.create({

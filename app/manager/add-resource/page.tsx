@@ -19,6 +19,7 @@ export default function AddResourcePage() {
     year: "",
     digitalUrl: "",
     copies: "1",
+    location: "",
   });
   const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -88,6 +89,7 @@ export default function AddResourcePage() {
         description: form.description || undefined,
         digitalUrl: form.digitalUrl || undefined,
         publisher: form.publisher || undefined,
+        location: form.location || undefined,
       }),
     });
 
@@ -245,15 +247,26 @@ export default function AddResourcePage() {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Number of Copies</label>
-              <input
-                type="number"
-                min="1"
-                value={form.copies}
-                onChange={(e) => setForm({ ...form, copies: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Number of Copies</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.copies}
+                  onChange={(e) => setForm({ ...form, copies: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Shelf</label>
+                <input
+                  placeholder="e.g. Shelf 3"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
 
             <div>

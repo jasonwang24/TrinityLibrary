@@ -10,7 +10,7 @@ const createResourceSchema = z.object({
   isbn: z.string().optional(),
   description: z.string().optional(),
   coverImage: z.string().optional(),
-  type: z.enum(["BOOK", "EBOOK", "JOURNAL", "AUDIOBOOK", "DVD", "OTHER"]),
+  type: z.enum(["BOOK", "EBOOK", "JOURNAL", "MAGAZINE", "AUDIOBOOK", "DVD", "OTHER"]),
   publisher: z.string().optional(),
   year: z.number().optional(),
   digitalUrl: z.string().url().optional(),

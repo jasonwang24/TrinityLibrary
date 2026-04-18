@@ -204,6 +204,7 @@ export default function AddResourcePage() {
                 <option value="BOOK">Book</option>
                 <option value="EBOOK">E-Book</option>
                 <option value="JOURNAL">Journal</option>
+                <option value="MAGAZINE">Magazine</option>
                 <option value="AUDIOBOOK">Audiobook</option>
                 <option value="DVD">DVD</option>
                 <option value="OTHER">Other</option>
@@ -232,7 +233,7 @@ export default function AddResourcePage() {
               </div>
             </div>
 
-            {["EBOOK", "JOURNAL", "AUDIOBOOK"].includes(form.type) && (
+            {["EBOOK", "JOURNAL", "MAGAZINE", "AUDIOBOOK"].includes(form.type) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Digital URL</label>
                 <input

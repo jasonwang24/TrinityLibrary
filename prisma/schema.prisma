@@ -17,6 +17,7 @@ enum ResourceType {
   BOOK
   EBOOK
   JOURNAL
+  MAGAZINE
   AUDIOBOOK
   DVD
   OTHER

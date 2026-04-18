@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
         reviews: { select: { rating: true } },
       },
-      orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
+      orderBy: { title: "asc" },
       skip: (page - 1) * limit,
       take: limit,
     }),

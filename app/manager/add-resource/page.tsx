@@ -89,7 +89,7 @@ export default function AddResourcePage() {
         description: form.description || undefined,
         digitalUrl: form.digitalUrl || undefined,
         publisher: form.publisher || undefined,
-        location: form.location || undefined,
+        location: form.location ? `Shelf ${form.location}` : undefined,
       }),
     });
 
@@ -260,12 +260,17 @@ export default function AddResourcePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Shelf</label>
-                <input
-                  placeholder="e.g. Shelf 3"
-                  value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+                  <span className="pl-4 pr-2 text-gray-500 select-none">Shelf</span>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="3"
+                    value={form.location}
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    className="flex-1 py-2 pr-4 bg-transparent focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
 

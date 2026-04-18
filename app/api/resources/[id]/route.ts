@@ -50,6 +50,46 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const { tagIds, copies: copyUpdates, ...data } = await req.json();
 
+  let copyPlan: {
+    toDelete: string[];
+    toUpdate: { id: string; location: string | null }[];
+    toCreate: { location: string | null }[];
+  } | null = null;
+
+  if (copyUpdates) {
+    const existing = await prisma.copy.findMany({
+      where: { resourceId: id },
+      include: { checkouts: true },
+    });
+    const requestedIds = new Set<string>(
+      copyUpdates.filter((c: { id?: string }) => c.id).map((c: { id: string }) => c.id),
+    );
+    const toDeleteRecords = existing.filter((e) => !requestedIds.has(e.id));
+    const blocked = toDeleteRecords.find(
+      (c) => c.status !== "AVAILABLE" || c.checkouts.length > 0,
+    );
+    if (blocked) {
+      return NextResponse.json(
+        {
+          error: `Cannot remove copy ${blocked.barcode} — it has checkout history or is not available`,
+        },
+        { status: 400 },
+      );
+    }
+    copyPlan = {
+      toDelete: toDeleteRecords.map((c) => c.id),
+      toUpdate: copyUpdates
+        .filter((c: { id?: string }) => c.id)
+        .map((c: { id: string; location?: string }) => ({
+          id: c.id,
+          location: c.location || null,
+        })),
+      toCreate: copyUpdates
+        .filter((c: { id?: string }) => !c.id)
+        .map((c: { location?: string }) => ({ location: c.location || null })),
+    };
+  }
+
   if (tagIds) {
     await prisma.resourceTag.deleteMany({ where: { resourceId: id } });
     await prisma.resourceTag.createMany({
@@ -57,11 +97,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     });
   }
 
-  if (copyUpdates) {
-    for (const copy of copyUpdates) {
-      await prisma.copy.update({
-        where: { id: copy.id },
-        data: { location: copy.location },
+  if (copyPlan) {
+    if (copyPlan.toDelete.length > 0) {
+      await prisma.copy.deleteMany({ where: { id: { in: copyPlan.toDelete } } });
+    }
+    for (const u of copyPlan.toUpdate) {
+      await prisma.copy.update({ where: { id: u.id }, data: { location: u.location } });
+    }
+    if (copyPlan.toCreate.length > 0) {
+      const now = Date.now();
+      await prisma.copy.createMany({
+        data: copyPlan.toCreate.map((c, i) => ({
+          resourceId: id,
+          barcode: `LIB-${now}-${i + 1}`,
+          status: "AVAILABLE" as const,
+          location: c.location,
+        })),
       });
     }
   }

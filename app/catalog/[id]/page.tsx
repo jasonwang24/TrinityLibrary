@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, XCircle, BookOpen, Edit, Calendar, X, Trash2, Star } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, BookOpen, Edit, Calendar, X, Trash2, Star, Plus } from "lucide-react";
 
 interface ResourceDetail {
   id: string;
@@ -58,7 +58,13 @@ export default function ResourceDetailPage() {
     publisher: "",
     year: "",
     selectedTagIds: [] as string[],
-    copies: [] as { id: string; location: string }[],
+    copies: [] as {
+      id?: string;
+      _key: string;
+      barcode?: string;
+      location: string;
+      canDelete: boolean;
+    }[],
   });
 
   useEffect(() => {
@@ -101,7 +107,13 @@ export default function ResourceDetailPage() {
       publisher: resource.publisher || "",
       year: resource.year ? String(resource.year) : "",
       selectedTagIds: resource.tags.map((t) => t.tag.id),
-      copies: resource.copies.map((c) => ({ id: c.id, location: c.location || "" })),
+      copies: resource.copies.map((c) => ({
+        id: c.id,
+        _key: c.id,
+        barcode: c.barcode,
+        location: c.location || "",
+        canDelete: c.status === "AVAILABLE",
+      })),
     });
     setEditing(true);
   }
@@ -118,7 +130,10 @@ export default function ResourceDetailPage() {
         publisher: editForm.publisher || undefined,
         year: editForm.year ? parseInt(editForm.year) : undefined,
         tagIds: editForm.selectedTagIds,
-        copies: editForm.copies,
+        copies: editForm.copies.map((c) => ({
+          ...(c.id ? { id: c.id } : {}),
+          location: c.location,
+        })),
       }),
     });
     if (res.ok) {
@@ -127,7 +142,8 @@ export default function ResourceDetailPage() {
       setEditing(false);
       showMessage("Saved!");
     } else {
-      showMessage("Save failed", "error");
+      const data = await res.json().catch(() => ({}));
+      showMessage(data.error || "Save failed", "error");
     }
   }
 
@@ -233,10 +249,31 @@ export default function ResourceDetailPage() {
     }));
   }
 
-  function updateCopyLocation(copyId: string, location: string) {
+  function updateCopyLocation(key: string, location: string) {
     setEditForm((prev) => ({
       ...prev,
-      copies: prev.copies.map((c) => (c.id === copyId ? { ...c, location } : c)),
+      copies: prev.copies.map((c) => (c._key === key ? { ...c, location } : c)),
+    }));
+  }
+
+  function addCopy() {
+    setEditForm((prev) => ({
+      ...prev,
+      copies: [
+        ...prev.copies,
+        {
+          _key: `new-${Date.now()}-${Math.random()}`,
+          location: "",
+          canDelete: true,
+        },
+      ],
+    }));
+  }
+
+  function removeCopy(key: string) {
+    setEditForm((prev) => ({
+      ...prev,
+      copies: prev.copies.filter((c) => c._key !== key),
     }));
   }
 
@@ -323,22 +360,40 @@ export default function ResourceDetailPage() {
               </div>
 
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Copy Locations</p>
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm font-medium text-gray-700">Copies ({editForm.copies.length})</p>
+                  <button
+                    type="button"
+                    onClick={addCopy}
+                    className="text-sm text-blue-600 hover:underline font-medium flex items-center gap-1"
+                  >
+                    <Plus size={14} />
+                    Add Copy
+                  </button>
+                </div>
                 <div className="space-y-2">
-                  {editForm.copies.map((copy) => {
-                    const original = resource.copies.find((c) => c.id === copy.id);
-                    return (
-                      <div key={copy.id} className="flex items-center gap-3">
-                        <span className="font-mono text-sm text-gray-500 min-w-[100px]">{original?.barcode}</span>
-                        <input
-                          value={copy.location}
-                          onChange={(e) => updateCopyLocation(copy.id, e.target.value)}
-                          placeholder="Location (e.g. Shelf 3)"
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    );
-                  })}
+                  {editForm.copies.map((copy) => (
+                    <div key={copy._key} className="flex items-center gap-3">
+                      <span className="font-mono text-xs text-gray-500 min-w-[120px]">
+                        {copy.barcode || "New copy"}
+                      </span>
+                      <input
+                        value={copy.location}
+                        onChange={(e) => updateCopyLocation(copy._key, e.target.value)}
+                        placeholder="Location (e.g. Shelf 3)"
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeCopy(copy._key)}
+                        disabled={!copy.canDelete}
+                        title={copy.canDelete ? "Remove copy" : "Cannot remove — copy is not available"}
+                        className="p-2 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

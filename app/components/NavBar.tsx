@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, User, QrCode, Settings, LogOut, ChevronDown } from "lucide-react";
+import { BookOpen, User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 export default function NavBar() {
@@ -68,18 +68,6 @@ export default function NavBar() {
 
             {isManager && (
               <>
-                <Link
-                  href="/manager/scan"
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                    isActive("/manager/scan")
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <QrCode size={18} />
-                  Scan
-                </Link>
-
                 <Link
                   href="/manager"
                   className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${

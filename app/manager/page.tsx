@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Users, BookOpen, Plus, Search, Settings, Tag, QrCode, ClipboardList } from "lucide-react";
+import { Users, BookOpen, Plus, Search, Settings, Tag, ClipboardList } from "lucide-react";
 
 export default function ManagerPage() {
   const { data: session, status } = useSession();
@@ -30,13 +30,6 @@ export default function ManagerPage() {
       title: "Add Resource",
       description: "Catalog a new book, e-book, or journal",
       color: "bg-blue-100 text-blue-600",
-    },
-    {
-      href: "/manager/scan",
-      icon: <QrCode size={32} />,
-      title: "Scan Barcode",
-      description: "Check in/out via barcode scan",
-      color: "bg-green-100 text-green-600",
     },
     {
       href: "/manager/tags",

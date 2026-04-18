@@ -36,20 +36,32 @@ export default function AddResourcePage() {
   }, []);
 
   async function lookupISBN() {
-    if (!form.isbn) return;
+    const normalizedIsbn = form.isbn.replace(/[-\s]/g, "");
+    if (!normalizedIsbn) return;
     setIsbnLookup(true);
     try {
-      const res = await fetch(`https://openlibrary.org/isbn/${form.isbn}.json`);
+      const res = await fetch(
+        `https://openlibrary.org/api/books?bibkeys=ISBN:${normalizedIsbn}&format=json&jscmd=data`
+      );
       if (res.ok) {
         const data = await res.json();
-        setForm((prev) => ({
-          ...prev,
-          title: data.title || prev.title,
-          publisher: data.publishers?.[0] || prev.publisher,
-          year: data.publish_date?.match(/\d{4}/)?.[0] || prev.year,
-        }));
-        setMessage("ISBN lookup successful!");
-        setMessageType("success");
+        const book = data[`ISBN:${normalizedIsbn}`];
+        if (book) {
+          setForm((prev) => ({
+            ...prev,
+            title: book.title || prev.title,
+            author:
+              book.authors?.map((a: { name: string }) => a.name).join(", ") ||
+              prev.author,
+            publisher: book.publishers?.[0]?.name || prev.publisher,
+            year: book.publish_date?.match(/\d{4}/)?.[0] || prev.year,
+          }));
+          setMessage("ISBN lookup successful!");
+          setMessageType("success");
+        } else {
+          setMessage("ISBN not found in Open Library");
+          setMessageType("error");
+        }
       } else {
         setMessage("ISBN not found in Open Library");
         setMessageType("error");
@@ -72,7 +84,7 @@ export default function AddResourcePage() {
         year: form.year ? parseInt(form.year) : undefined,
         copies: parseInt(form.copies),
         tagIds: selectedTags,
-        isbn: form.isbn || undefined,
+        isbn: form.isbn.replace(/[-\s]/g, "") || undefined,
         description: form.description || undefined,
         digitalUrl: form.digitalUrl || undefined,
         publisher: form.publisher || undefined,

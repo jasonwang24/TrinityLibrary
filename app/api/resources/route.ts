@@ -4,19 +4,24 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 
+const httpUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https?:\/\//i.test(u), "URL must start with http:// or https://");
+
 const createResourceSchema = z.object({
-  title: z.string().min(1),
-  author: z.string().min(1),
-  isbn: z.string().optional(),
-  description: z.string().optional(),
-  coverImage: z.string().optional(),
+  title: z.string().min(1).max(500),
+  author: z.string().min(1).max(500),
+  isbn: z.string().max(20).optional(),
+  description: z.string().max(5000).optional(),
+  coverImage: httpUrl.optional(),
   type: z.enum(["BOOK", "EBOOK", "JOURNAL", "MAGAZINE", "AUDIOBOOK", "DVD", "OTHER"]),
-  publisher: z.string().optional(),
-  year: z.number().optional(),
-  digitalUrl: z.string().url().optional(),
+  publisher: z.string().max(200).optional(),
+  year: z.number().int().min(0).max(9999).optional(),
+  digitalUrl: httpUrl.optional(),
   tagIds: z.array(z.string()).optional(),
-  copies: z.number().min(1).default(1),
-  location: z.string().optional(),
+  copies: z.number().min(1).max(100).default(1),
+  location: z.string().max(100).optional(),
 });
 
 export async function GET(req: NextRequest) {

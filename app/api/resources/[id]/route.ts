@@ -2,6 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { z } from "zod";
+
+const httpUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https?:\/\//i.test(u), "URL must start with http:// or https://");
+
+const updateResourceSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  author: z.string().min(1).max(500).optional(),
+  isbn: z.string().max(20).nullable().optional(),
+  description: z.string().max(5000).nullable().optional(),
+  coverImage: httpUrl.nullable().optional(),
+  type: z.enum(["BOOK", "EBOOK", "JOURNAL", "MAGAZINE", "AUDIOBOOK", "DVD", "OTHER"]).optional(),
+  publisher: z.string().max(200).nullable().optional(),
+  year: z.number().int().min(0).max(9999).nullable().optional(),
+  digitalUrl: httpUrl.nullable().optional(),
+  sortOrder: z.number().int().optional(),
+  tagIds: z.array(z.string()).optional(),
+  copies: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        location: z.string().max(100).nullable().optional(),
+      }),
+    )
+    .optional(),
+});
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,7 +76,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const { id } = await params;
-  const { tagIds, copies: copyUpdates, ...data } = await req.json();
+  const body = await req.json();
+  const parsed = updateResourceSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  const { tagIds, copies: copyUpdates, ...data } = parsed.data;
 
   let copyPlan: {
     toDelete: string[];
@@ -62,7 +95,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       include: { checkouts: true },
     });
     const requestedIds = new Set<string>(
-      copyUpdates.filter((c: { id?: string }) => c.id).map((c: { id: string }) => c.id),
+      copyUpdates.filter((c) => c.id).map((c) => c.id as string),
     );
     const toDeleteRecords = existing.filter((e) => !requestedIds.has(e.id));
     const blocked = toDeleteRecords.find(
@@ -79,14 +112,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     copyPlan = {
       toDelete: toDeleteRecords.map((c) => c.id),
       toUpdate: copyUpdates
-        .filter((c: { id?: string }) => c.id)
-        .map((c: { id: string; location?: string }) => ({
-          id: c.id,
+        .filter((c) => c.id)
+        .map((c) => ({
+          id: c.id as string,
           location: c.location || null,
         })),
       toCreate: copyUpdates
-        .filter((c: { id?: string }) => !c.id)
-        .map((c: { location?: string }) => ({ location: c.location || null })),
+        .filter((c) => !c.id)
+        .map((c) => ({ location: c.location || null })),
     };
   }
 

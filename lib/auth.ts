@@ -4,6 +4,9 @@ import GoogleProvider from "next-auth/providers/google";
 import { compare } from "bcryptjs";
 import { prisma } from "./db";
 
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000;
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -25,8 +28,29 @@ export const authOptions: NextAuthOptions = {
 
         if (!user || !user.passwordHash) return null;
 
+        if (user.lockedUntil && user.lockedUntil > new Date()) return null;
+
         const isValid = await compare(credentials.password, user.passwordHash);
-        if (!isValid) return null;
+
+        if (!isValid) {
+          const nextAttempts = user.failedLoginAttempts + 1;
+          const shouldLock = nextAttempts >= MAX_LOGIN_ATTEMPTS;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: shouldLock ? 0 : nextAttempts,
+              lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_MS) : user.lockedUntil,
+            },
+          });
+          return null;
+        }
+
+        if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
+          });
+        }
 
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },

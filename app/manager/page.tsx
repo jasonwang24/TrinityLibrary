@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Users, BookOpen, Plus, Search, Settings, Tag, ClipboardList } from "lucide-react";
+import { Users, BookOpen, Plus, Tag, ClipboardList } from "lucide-react";
 
 export default function ManagerPage() {
   const { data: session, status } = useSession();
@@ -44,6 +44,13 @@ export default function ManagerPage() {
       title: "Active Checkouts",
       description: "View all checked out books and who has them",
       color: "bg-red-100 text-red-600",
+    },
+    {
+      href: "/manager/users",
+      icon: <Users size={32} />,
+      title: "Manage Users",
+      description: "Promote members to managers or remove access",
+      color: "bg-green-100 text-green-600",
     },
     {
       href: "/catalog",

@@ -118,7 +118,7 @@ function CatalogContent() {
 
   async function pickRandomBook() {
     setSurpriseLoading(true);
-    const res = await fetch("/api/resources?page=1&limit=200");
+    const res = await fetch("/api/resources?page=1&limit=200&availability=available");
     const data = await res.json();
     if (data.resources?.length > 0) {
       const random = data.resources[Math.floor(Math.random() * data.resources.length)];

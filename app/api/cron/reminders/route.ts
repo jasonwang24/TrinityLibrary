@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   for (const checkout of overdueUnnotified) {
     try {
       await resend.emails.send({
-        from: "Trinity Library <onboarding@resend.dev>",
+        from: "Trinity Library <noreply@trinitycambridge.com>",
         to: checkout.user.email,
         subject: `Overdue: "${checkout.copy.resource.title}"`,
         text: `Hi ${checkout.user.name},\n\nYour library book "${checkout.copy.resource.title}" was due on ${new Date(checkout.dueDate).toLocaleDateString()}. Please return it as soon as possible.\n\nThanks,\nTrinity Library`,

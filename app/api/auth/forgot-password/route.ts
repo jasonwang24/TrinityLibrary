@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
 
     await resend.emails.send({
-      from: "Trinity Library <onboarding@resend.dev>",
+      from: "Trinity Library <noreply@trinitycambridge.com>",
       to: user.email,
       subject: "Reset your Trinity Library password",
       text: `Hi ${user.name},\n\nSomeone (hopefully you) requested a password reset for your Trinity Library account.\n\nReset your password here: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.\n\nThanks,\nTrinity Library`,

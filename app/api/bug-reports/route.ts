@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   const userEmail = session?.user?.email || "Not signed in";
 
   await resend.emails.send({
-    from: "Trinity Library <onboarding@resend.dev>",
+    from: "Trinity Library <noreply@trinitycambridge.com>",
     to: "j.wang2216@gmail.com",
     subject: `Bug Report: ${page}`,
     text: `Bug Report\n\nPage: ${page}\nUser: ${userName} (${userEmail})\nTime: ${new Date().toISOString()}\n\nMessage:\n${message}`,

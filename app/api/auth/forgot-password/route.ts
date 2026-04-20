@@ -11,6 +11,7 @@ const schema = z.object({
 });
 
 const TOKEN_TTL_MS = 60 * 60 * 1000;
+const RESEND_COOLDOWN_MS = 2 * 60 * 1000;
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -23,6 +24,16 @@ export async function POST(req: Request) {
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (user && user.passwordHash) {
+    const recent = await prisma.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        createdAt: { gt: new Date(Date.now() - RESEND_COOLDOWN_MS) },
+      },
+    });
+    if (recent) {
+      return NextResponse.json({ success: true });
+    }
+
     const rawToken = randomBytes(32).toString("hex");
     const tokenHash = createHash("sha256").update(rawToken).digest("hex");
 

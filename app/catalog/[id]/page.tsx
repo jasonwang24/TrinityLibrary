@@ -625,14 +625,6 @@ export default function ResourceDetailPage() {
                             </span>
                           )}
                         </div>
-                        {session && copy.status === "AVAILABLE" && (
-                          <button
-                            onClick={() => handleCheckout(copy.id)}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                          >
-                            Check Out
-                          </button>
-                        )}
                       </div>
                     ))}
                   </div>

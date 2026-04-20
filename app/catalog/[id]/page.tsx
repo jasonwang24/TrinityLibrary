@@ -611,7 +611,7 @@ export default function ResourceDetailPage() {
                         className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
                       >
                         <div className="flex items-center gap-4">
-                          <span className="font-mono text-sm">{copy.barcode}</span>
+                          {isManager && <span className="font-mono text-sm">{copy.barcode}</span>}
                           {copy.location && <span className="text-sm text-gray-500">{copy.location}</span>}
                           {copy.status === "AVAILABLE" ? (
                             <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">

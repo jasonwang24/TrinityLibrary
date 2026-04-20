@@ -4,3 +4,4 @@ node_modules/
 .env.*
 *.bak
 prisma/*.db
+tsconfig.tsbuildinfo

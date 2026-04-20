@@ -1,5 +1,27 @@
 @import "tailwindcss";
 
+@theme {
+  --color-blue-50:  #e6eff5;
+  --color-blue-100: #cadfed;
+  --color-blue-200: #9cc3db;
+  --color-blue-300: #6da6c8;
+  --color-blue-400: #3e8ab5;
+  --color-blue-500: #08abdb;
+  --color-blue-600: #125f89;
+  --color-blue-700: #0e4b6c;
+  --color-blue-800: #0a3752;
+  --color-blue-900: #082a3e;
+
+  --color-gray-50: #eaeaea;
+
+  --color-gold:      #c6af7d;
+  --color-gold-dark: #967e50;
+  --color-accent:    #08abdb;
+
+  --font-display: "Gotham Black", "Gotham", var(--font-montserrat), system-ui, sans-serif;
+  --font-sans:    "Gotham Book",  "Gotham", var(--font-montserrat), system-ui, sans-serif;
+  --font-serif:   var(--font-source-serif), "Source Serif 4", "Source Serif Pro", Georgia, serif;
+}
 
 @layer base {
   *, *::before, *::after {
@@ -8,7 +30,32 @@
     padding: 0;
   }
 
+  html {
+    font-family: var(--font-sans);
+  }
+
   body {
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
+    font-weight: 400;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .font-serif-italic {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  .font-serif-italic-semibold {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 600;
   }
 }

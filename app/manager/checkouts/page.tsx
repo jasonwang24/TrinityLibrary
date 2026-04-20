@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, User, Clock, AlertTriangle, ArrowLeft } from "lucide-react";
+import { BookOpen, User, Clock, AlertTriangle, ArrowLeft, X } from "lucide-react";
 
 interface Checkout {
   id: string;
@@ -85,13 +85,25 @@ export default function ManagerCheckoutsPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <input
-            type="text"
-            placeholder="Search by title, author, member name, or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search by title, author, member name, or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (

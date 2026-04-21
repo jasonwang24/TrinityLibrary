@@ -1,10 +1,10 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle, History, Trash2 } from "lucide-react";
+import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle, History } from "lucide-react";
 
 interface Checkout {
   id: string;
@@ -46,7 +46,6 @@ export default function DashboardPage() {
   const [holds, setHolds] = useState<Hold[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [message, setMessage] = useState("");
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -105,30 +104,6 @@ export default function DashboardPage() {
       setMessage(data.error);
     }
     setTimeout(() => setMessage(""), 3000);
-  }
-
-  async function handleDeleteAccount() {
-    if (!session) return;
-    const typed = prompt(
-      `Permanently delete your account? This removes your checkout history, holds, and reviews. Type your email (${session.user.email}) to confirm:`,
-    );
-    if (typed === null) return;
-    if (typed.trim().toLowerCase() !== session.user.email?.toLowerCase()) {
-      setMessage("Email didn't match — deletion cancelled");
-      setTimeout(() => setMessage(""), 3000);
-      return;
-    }
-
-    setDeleting(true);
-    const res = await fetch(`/api/users/${session.user.id}`, { method: "DELETE" });
-    if (res.ok) {
-      await signOut({ callbackUrl: "/" });
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setMessage(data.error || "Delete failed");
-      setDeleting(false);
-      setTimeout(() => setMessage(""), 4000);
-    }
   }
 
   async function handleCancelHold(holdId: string) {
@@ -408,17 +383,6 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-
-        <div className="mt-12 border-t border-gray-200 pt-6">
-          <button
-            onClick={handleDeleteAccount}
-            disabled={deleting}
-            className="inline-flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
-          >
-            <Trash2 size={16} />
-            {deleting ? "Deleting..." : "Delete my account"}
-          </button>
-        </div>
       </div>
     </div>
   );

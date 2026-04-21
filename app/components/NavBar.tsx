@@ -4,7 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { BookOpen, User, Settings, LogOut, ChevronDown, Menu, X } from "lucide-react";
+import { BookOpen, User, Settings, LogOut, ChevronDown, Menu, X, Trash2, AlertTriangle } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 export default function NavBar() {
@@ -13,6 +13,10 @@ export default function NavBar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,6 +35,31 @@ export default function NavBar() {
 
   const isActive = (path: string) => pathname === path;
   const isManager = session?.user.role === "MANAGER";
+
+  function openDeleteModal() {
+    setShowUserMenu(false);
+    setDeleteConfirmText("");
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  }
+
+  async function confirmDelete() {
+    if (!session) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const res = await fetch(`/api/users/${session.user.id}`, { method: "DELETE" });
+    if (res.ok) {
+      await signOut({ callbackUrl: "/" });
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error || "Delete failed");
+      setDeleting(false);
+    }
+  }
+
+  const emailMatches =
+    !!session?.user.email &&
+    deleteConfirmText.trim().toLowerCase() === session.user.email.toLowerCase();
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -137,14 +166,22 @@ export default function NavBar() {
                     <button
                       onClick={() => { setSigningOut(true); signOut(); }}
                       disabled={signingOut}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50"
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
                     >
                       {signingOut ? (
-                        <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                       ) : (
                         <LogOut size={16} />
                       )}
                       {signingOut ? "Signing out..." : "Sign Out"}
+                    </button>
+                    <div className="border-t border-gray-100 my-1" />
+                    <button
+                      onClick={openDeleteModal}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <Trash2 size={16} />
+                      Delete account
                     </button>
                   </div>
                 )}
@@ -197,6 +234,75 @@ export default function NavBar() {
           </div>
         )}
       </div>
+
+      {showDeleteModal && session && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          onClick={() => !deleting && setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="bg-red-100 text-red-600 rounded-full p-2 shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h2 id="delete-account-title" className="text-lg font-semibold text-gray-900">
+                  Delete your account?
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  This permanently removes your account, checkout history, holds, and reviews.
+                  This can't be undone.
+                </p>
+              </div>
+            </div>
+
+            <label className="block text-sm text-gray-700 mb-2">
+              Type <span className="font-semibold">{session.user.email}</span> to confirm:
+            </label>
+            <input
+              type="email"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              disabled={deleting}
+              autoFocus
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
+              placeholder={session.user.email || ""}
+            />
+
+            {deleteError && (
+              <p className="mt-3 text-sm text-red-600">{deleteError}</p>
+            )}
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={!emailMatches || deleting}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {deleting && (
+                  <div className="w-4 h-4 border-2 border-red-200 border-t-white rounded-full animate-spin" />
+                )}
+                {deleting ? "Deleting..." : "Delete account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

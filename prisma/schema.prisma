@@ -151,7 +151,7 @@ model Checkout {
   renewals         Int       @default(0)
   overdueNotified  Boolean   @default(false)
   copy         Copy      @relation(fields: [copyId], references: [id])
-  user         User      @relation(fields: [userId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([copyId])
   @@index([userId])
@@ -166,7 +166,7 @@ model Hold {
   createdAt  DateTime   @default(now())
   notifiedAt DateTime?
   resource   Resource   @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  user       User       @relation(fields: [userId], references: [id])
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([resourceId])
   @@index([userId])
@@ -181,7 +181,7 @@ model Review {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([resourceId, userId])
   @@index([resourceId])

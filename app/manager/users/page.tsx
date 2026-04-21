@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Users, Search, Shield, ShieldOff, X } from "lucide-react";
+import { ArrowLeft, Users, Search, Shield, ShieldOff, X, Trash2 } from "lucide-react";
 
 type User = {
   id: string;
@@ -62,6 +62,29 @@ export default function ManageUsersPage() {
     } else {
       const data = await res.json().catch(() => ({}));
       showMessage(data.error || "Update failed", "error");
+    }
+  }
+
+  async function deleteUser(user: User) {
+    const typed = prompt(
+      `This permanently deletes ${user.name} and all their checkout, hold, and review history. Type their email (${user.email}) to confirm:`,
+    );
+    if (typed === null) return;
+    if (typed.trim().toLowerCase() !== user.email.toLowerCase()) {
+      showMessage("Email didn't match — deletion cancelled", "error");
+      return;
+    }
+
+    setBusyId(user.id);
+    const res = await fetch(`/api/users/${user.id}`, { method: "DELETE" });
+    setBusyId(null);
+
+    if (res.ok) {
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      showMessage(`${user.name} deleted`);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showMessage(data.error || "Delete failed", "error");
     }
   }
 
@@ -164,23 +187,35 @@ export default function ManageUsersPage() {
                       </div>
                       <div className="text-sm text-gray-500 truncate">{u.email}</div>
                     </div>
-                    <button
-                      onClick={() => toggleRole(u)}
-                      disabled={busyId === u.id || (isSelf && isManager)}
-                      title={isSelf && isManager ? "You can't remove your own manager access" : ""}
-                      className={`self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                        isManager
-                          ? "border border-gray-300 text-gray-700 hover:bg-gray-50"
-                          : "bg-blue-600 text-white hover:bg-blue-700"
-                      }`}
-                    >
-                      {isManager ? <ShieldOff size={16} /> : <Shield size={16} />}
-                      {busyId === u.id
-                        ? "Updating..."
-                        : isManager
-                          ? "Remove manager"
-                          : "Make manager"}
-                    </button>
+                    <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+                      <button
+                        onClick={() => toggleRole(u)}
+                        disabled={busyId === u.id || (isSelf && isManager)}
+                        title={isSelf && isManager ? "You can't remove your own manager access" : ""}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isManager
+                            ? "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
+                      >
+                        {isManager ? <ShieldOff size={16} /> : <Shield size={16} />}
+                        {busyId === u.id
+                          ? "Updating..."
+                          : isManager
+                            ? "Remove manager"
+                            : "Make manager"}
+                      </button>
+                      {!isSelf && (
+                        <button
+                          onClick={() => deleteUser(u)}
+                          disabled={busyId === u.id}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 size={16} />
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </li>
                 );
               })}

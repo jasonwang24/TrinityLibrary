@@ -53,7 +53,7 @@ function HomeContent() {
       {/* content */}
       <div className="relative flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-12">
         <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-10 py-10 flex flex-col items-center shadow-2xl shadow-black/20">
-          <div className="mb-8">
+          <div className="mb-2">
             <Image
               src="/trinity-logo-vertical.png"
               alt="Trinity Cambridge Church"
@@ -63,6 +63,9 @@ function HomeContent() {
               className="brightness-0 invert opacity-90"
             />
           </div>
+          <p className="text-blue-200/70 uppercase tracking-[0.25em] text-sm font-semibold mb-8">
+            Book Library
+          </p>
 
           <div className="grid grid-cols-2 gap-3 w-full" style={{ minWidth: "360px" }}>
             <Link

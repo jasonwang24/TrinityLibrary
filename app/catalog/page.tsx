@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, ArrowLeft, ArrowRight, Star, Shuffle, X } from "lucide-react";
+import { Search, Filter, BookOpen, CheckCircle, XCircle, Grid, List, Star, Shuffle, X, Loader2 } from "lucide-react";
 import { useEasterEgg } from "../providers";
 
 interface Resource {
@@ -43,13 +43,14 @@ function CatalogContent() {
   const [tagFilter, setTagFilter] = useState(searchParams.get("tag") || "");
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(parseInt(searchParams.get("page") || "1"));
-  const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"gallery" | "spreadsheet">("gallery");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "checked-out">((searchParams.get("availability") as any) || "all");
-  const [sliderPage, setSliderPage] = useState(parseInt(searchParams.get("page") || "1"));
   const contentRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const isInitialRender = useRef(true);
   const PAGE_SIZE = 20;
 
@@ -68,8 +69,9 @@ function CatalogContent() {
       isInitialRender.current = false;
       return;
     }
+    setResources([]);
     setPage(1);
-    setSliderPage(1);
+    setHasMore(true);
   }, [debouncedSearch, tagFilter, availabilityFilter]);
 
   useEffect(() => {
@@ -82,34 +84,45 @@ function CatalogContent() {
   }, [search, triggerEasterEgg]);
 
   useEffect(() => {
-    setSliderPage(page);
-  }, [page]);
+    const isFirstPage = page === 1;
+    if (isFirstPage) setLoading(true);
+    else setLoadingMore(true);
 
-  useEffect(() => {
-    setLoading(true);
-    const scrollY = window.scrollY;
-    const params = new URLSearchParams();
-    if (debouncedSearch) params.set("q", debouncedSearch);
-    if (tagFilter) params.set("tag", tagFilter);
-    if (availabilityFilter !== "all") params.set("availability", availabilityFilter);
-    if (page > 1) params.set("page", String(page));
+    const urlParams = new URLSearchParams();
+    if (debouncedSearch) urlParams.set("q", debouncedSearch);
+    if (tagFilter) urlParams.set("tag", tagFilter);
+    if (availabilityFilter !== "all") urlParams.set("availability", availabilityFilter);
 
-    // Sync to URL without triggering re-render
-    const urlParams = params.toString();
-    window.history.replaceState(null, "", `/catalog${urlParams ? `?${urlParams}` : ""}`);
+    window.history.replaceState(null, "", `/catalog${urlParams.toString() ? `?${urlParams}` : ""}`);
 
-    params.set("page", String(page));
-    params.set("limit", String(PAGE_SIZE));
-    fetch(`/api/resources?${params}`)
+    urlParams.set("page", String(page));
+    urlParams.set("limit", String(PAGE_SIZE));
+    fetch(`/api/resources?${urlParams}`)
       .then((r) => r.json())
       .then((data) => {
-        setResources(data.resources);
-        setTotalPages(data.totalPages);
+        setResources((prev) => isFirstPage ? data.resources : [...prev, ...data.resources]);
         setTotal(data.total);
+        setHasMore(page < data.totalPages);
         setLoading(false);
-        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+        setLoadingMore(false);
       });
   }, [debouncedSearch, tagFilter, availabilityFilter, page]);
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          setPage((p) => p + 1);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore]);
 
   const availableCount = (copies: Resource["copies"]) =>
     (copies || []).filter((c) => c.status === "AVAILABLE").length;
@@ -130,6 +143,7 @@ function CatalogContent() {
   }
 
   const filteredResources = resources;
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -272,11 +286,11 @@ function CatalogContent() {
         </div>
 
         <div className="mb-4 text-sm text-gray-600">
-          Showing {filteredResources.length} of {total} books
+          {resources.length} of {total} books
         </div>
 
         {loading && (
-          <div className="fixed inset-0 bg-white/50 z-50 flex items-center justify-center">
+          <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
           </div>
         )}
@@ -432,45 +446,19 @@ function CatalogContent() {
         )}
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex flex-col items-center gap-3 mt-8">
-            <div className="flex items-center gap-4 w-full max-w-md">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="p-2 rounded-full text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <div className="flex-1 relative">
-                <input
-                  type="range"
-                  min={1}
-                  max={totalPages}
-                  value={sliderPage}
-                  onChange={(e) => setSliderPage(Number(e.target.value))}
-                  onMouseUp={() => setPage(sliderPage)}
-                  onTouchEnd={() => setPage(sliderPage)}
-                  className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-blue-600
-                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-blue-700 [&::-webkit-slider-thumb]:transition-colors"
-                />
-                <div className="flex justify-between mt-1">
-                  <span className="text-xs text-gray-400">1</span>
-                  <span className="text-xs text-gray-400">{totalPages}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="p-2 rounded-full text-gray-600 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ArrowRight size={20} />
-              </button>
-            </div>
-            <span className="text-sm font-medium text-gray-700">
-              Page {sliderPage} of {totalPages}
-            </span>
+        {/* infinite scroll sentinel */}
+        <div ref={sentinelRef} className="h-1" />
+
+        {loadingMore && (
+          <div className="flex justify-center py-6">
+            <Loader2 size={24} className="text-blue-600 animate-spin" />
           </div>
+        )}
+
+        {!hasMore && resources.length > 0 && (
+          <p className="text-center text-sm text-gray-400 py-6">
+            You&apos;ve reached the end
+          </p>
         )}
       </div>
     </div>

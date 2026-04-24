@@ -115,6 +115,11 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith(baseUrl)) return url;
+      if (url.startsWith("/")) return baseUrl + url;
+      return baseUrl;
+    },
     async jwt({ token, user, account }) {
       if (account?.provider === "google") {
         const dbUser = await prisma.user.findUnique({

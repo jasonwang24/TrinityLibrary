@@ -8,7 +8,8 @@ import { BookOpen, User, Settings, LogOut, ChevronDown, Menu, X, Trash2, AlertTr
 import { useState, useRef, useEffect } from "react";
 
 export default function NavBar() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const sessionLoading = status === "loading";
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -76,7 +77,7 @@ export default function NavBar() {
             />
           </Link>
 
-          <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-1">
+          <div className={`absolute left-1/2 -translate-x-1/2 items-center gap-1 ${sessionLoading ? "hidden" : "hidden md:flex"}`}>
             <Link
               href="/catalog"
               className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
@@ -89,7 +90,7 @@ export default function NavBar() {
               Catalog
             </Link>
 
-            {session && (
+            {!sessionLoading && session && (
               <Link
                 href="/dashboard"
                 className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
@@ -103,20 +104,18 @@ export default function NavBar() {
               </Link>
             )}
 
-            {isManager && (
-              <>
-                <Link
-                  href="/manager"
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                    isActive("/manager")
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <Settings size={18} />
-                  Manage
-                </Link>
-              </>
+            {!sessionLoading && isManager && (
+              <Link
+                href="/manager"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                  isActive("/manager")
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <Settings size={18} />
+                Manage
+              </Link>
             )}
           </div>
 
@@ -131,7 +130,7 @@ export default function NavBar() {
             </button>
 
             <div className="relative" ref={menuRef}>
-            {session ? (
+            {sessionLoading ? null : session ? (
               <>
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
@@ -209,7 +208,7 @@ export default function NavBar() {
               <BookOpen size={18} />
               Catalog
             </Link>
-            {session && (
+            {!sessionLoading && session && (
               <Link
                 href="/dashboard"
                 className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
@@ -220,7 +219,7 @@ export default function NavBar() {
                 My Dashboard
               </Link>
             )}
-            {isManager && (
+            {!sessionLoading && isManager && (
               <Link
                 href="/manager"
                 className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${

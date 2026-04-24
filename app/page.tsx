@@ -1,57 +1,96 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
-import { BookOpen } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useCallback } from "react";
+import { BookOpen, Search, ArrowRight } from "lucide-react";
+import WelcomeAnimation from "./components/WelcomeAnimation";
 
 export default function Home() {
-  const { data: session } = useSession();
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
+  const { data: session, status } = useSession();
+  const sessionLoading = status === "loading";
+  const searchParams = useSearchParams();
+  const [showWelcome, setShowWelcome] = useState(
+    searchParams.get("welcome") === "true"
+  );
+
+  const handleWelcomeComplete = useCallback(() => {
+    setShowWelcome(false);
+    window.history.replaceState({}, "", "/");
+  }, []);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="flex justify-center mb-6">
-            <div className="bg-blue-600 text-white rounded-full p-6">
-              <BookOpen size={48} />
-            </div>
+    <>
+      {showWelcome && session && (
+        <WelcomeAnimation
+          userName={session.user.name || "Reader"}
+          onComplete={handleWelcomeComplete}
+        />
+      )}
+    <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
+      {/* background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-blue-900 via-blue-800 to-blue-700" />
+      <div
+        className="absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 60% 80%, white 1px, transparent 1px)",
+          backgroundSize: "120px 120px, 80px 80px, 100px 100px",
+        }}
+      />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-blue-500/10 blur-3xl" />
+
+      {/* content */}
+      <div className="relative flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-12">
+        <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-10 py-10 flex flex-col items-center shadow-2xl shadow-black/20">
+          <div className="mb-8">
+            <Image
+              src="/trinity-logo-vertical.png"
+              alt="Trinity Cambridge Church"
+              width={280}
+              height={350}
+              priority
+              className="brightness-0 invert opacity-90"
+            />
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Trinity Library
-          </h1>
-          <p className="text-gray-600 mb-8">
-            Search the catalog, check out resources, and manage your holds.
-          </p>
-
-          <Link
-            href="/catalog"
-            className="block w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center mb-3"
-          >
-            Browse Catalog
-          </Link>
-
-          {session ? (
+          <div className="grid grid-cols-2 gap-3 w-full" style={{ minWidth: "360px" }}>
             <Link
-              href="/dashboard"
-              className="block w-full bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-center"
+              href="/catalog"
+              className={`bg-white text-blue-900 px-6 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-black/10 whitespace-nowrap ${sessionLoading ? "opacity-0" : "opacity-100"}`}
             >
-              My Dashboard
+              <Search size={18} />
+              Browse Catalog
             </Link>
-          ) : (
-            <Link
-              href="/login"
-              className="block w-full bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-center"
-            >
-              Sign In
-            </Link>
-          )}
 
-          <p className="text-xs text-gray-500 mt-6">
-            Access your library account to browse and checkout books
-          </p>
+            <Link
+              href={session ? "/dashboard" : "/login"}
+              className={`bg-white/15 text-white border border-white/20 px-6 py-3.5 rounded-xl font-semibold hover:bg-white/25 transition-all text-center flex items-center justify-center gap-2 whitespace-nowrap ${sessionLoading ? "opacity-0" : "opacity-100"}`}
+            >
+              {session ? "My Dashboard" : "Sign In"}
+              <ArrowRight size={18} />
+            </Link>
+          </div>
+        </div>
+
+        {/* decorative book icons */}
+        <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1 opacity-[0.08]">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <BookOpen key={i} size={28} className="text-white" strokeWidth={1} />
+          ))}
         </div>
       </div>
     </div>
+    </>
   );
 }

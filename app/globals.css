@@ -59,3 +59,41 @@
     font-weight: 600;
   }
 }
+
+@keyframes welcomeFloat {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--tw-float-opacity, 0.12);
+  }
+  90% {
+    opacity: var(--tw-float-opacity, 0.12);
+  }
+  100% {
+    transform: translateY(-110vh) rotate(25deg);
+    opacity: 0;
+  }
+}
+
+@keyframes welcomeSparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+}
+
+@keyframes welcomeFadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    pointer-events: none;
+  }
+}

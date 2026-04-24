@@ -46,7 +46,7 @@ export default function SignUpPage() {
         setError("Account created but sign-in failed. Please sign in manually.");
         router.push("/login");
       } else {
-        router.push("/dashboard");
+        router.push("/?welcome=true");
       }
     } catch {
       setError("Something went wrong");
@@ -73,7 +73,7 @@ export default function SignUpPage() {
           </p>
 
           <button
-            onClick={() => { setGoogleLoading(true); signIn("google", { callbackUrl: "/dashboard" }); }}
+            onClick={() => { setGoogleLoading(true); signIn("google", { callbackUrl: "/?welcome=true" }); }}
             disabled={googleLoading}
             className="w-full bg-white border-2 border-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-3 mb-6 disabled:opacity-50"
           >

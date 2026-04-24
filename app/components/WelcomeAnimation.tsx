@@ -62,8 +62,8 @@ export default function WelcomeAnimation({
       setTimeout(() => setPhase("card"), 300),
       setTimeout(() => setPhase("stamp"), 1000),
       setTimeout(() => setPhase("text"), 1600),
-      setTimeout(() => setPhase("exit"), 5500),
-      setTimeout(onComplete, 6300),
+      setTimeout(() => setPhase("exit"), 4200),
+      setTimeout(onComplete, 5000),
     ];
     return () => timers.forEach(clearTimeout);
   }, [onComplete]);

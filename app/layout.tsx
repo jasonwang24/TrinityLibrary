@@ -5,6 +5,7 @@ import { Montserrat, Source_Serif_4 } from "next/font/google";
 import { Providers } from "./providers";
 import NavBar from "./components/NavBar";
 import BugReportButton from "./components/BugReportButton";
+import SplashScreen from "./components/SplashScreen";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <Providers>
+          <SplashScreen />
           <NavBar />
           {children}
           <BugReportButton />

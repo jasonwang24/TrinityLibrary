@@ -97,3 +97,46 @@
     pointer-events: none;
   }
 }
+
+@keyframes splashSparkle {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(calc(var(--tx) * 0.5), calc(var(--ty) * 0.5)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(0);
+  }
+}
+
+@keyframes splashRay {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--ray-angle)) scaleX(0);
+  }
+  30% {
+    opacity: 1;
+    transform: rotate(calc(var(--ray-angle) + 8deg)) scaleX(0.6);
+  }
+  60% {
+    opacity: 0.6;
+    transform: rotate(calc(var(--ray-angle) + 20deg)) scaleX(1);
+  }
+  100% {
+    opacity: 0.2;
+    transform: rotate(calc(var(--ray-angle) + 30deg)) scaleX(1.1);
+  }
+}
+
+@keyframes splashShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

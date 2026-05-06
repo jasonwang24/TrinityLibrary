@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-const CHECKOUT_DURATION_DAYS = 14;
+const CHECKOUT_DURATION_DAYS = 30;
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);

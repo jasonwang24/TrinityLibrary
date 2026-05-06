@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 const MAX_RENEWALS = 2;
-const RENEWAL_DAYS = 14;
+const RENEWAL_DAYS = 30;
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);

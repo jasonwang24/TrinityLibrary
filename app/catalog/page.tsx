@@ -208,7 +208,12 @@ function CatalogContent() {
           <div className="mb-6 bg-amber-50 border border-amber-100 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <Star size={15} className="text-amber-500 fill-amber-500 shrink-0" />
-              <span className="text-sm font-semibold text-gray-800">Leadership recommendations</span>
+              <span className="text-sm font-semibold text-gray-800">
+                Recommendations by Trinity Leadership Team
+              </span>
+              <span className="text-xs text-gray-400">
+                · {new Date().toLocaleString("default", { month: "long", year: "numeric" })}
+              </span>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-1 -mb-1">
               {featured.map((entry) => {

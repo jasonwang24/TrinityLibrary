@@ -18,12 +18,14 @@ interface SelectedBook {
   resourceId: string;
   resource: Resource;
   note: string;
+  recommenderName: string;
 }
 
 interface FeaturedEntry {
   id: string;
   resourceId: string;
   note: string | null;
+  recommenderName: string | null;
   resource: Resource;
 }
 
@@ -70,7 +72,7 @@ export default function ManagerFeaturedPage() {
     fetch(`/api/manager/featured?month=${month}&year=${year}`)
       .then((r) => r.json())
       .then((data: FeaturedEntry[]) => {
-        setSelected(data.map((f) => ({ resourceId: f.resourceId, resource: f.resource, note: f.note ?? "" })));
+        setSelected(data.map((f) => ({ resourceId: f.resourceId, resource: f.resource, note: f.note ?? "", recommenderName: f.recommenderName ?? "" })));
       });
   }, [month, year]);
 
@@ -89,7 +91,7 @@ export default function ManagerFeaturedPage() {
   function addBook(r: Resource) {
     if (selected.length >= MAX_FEATURED) return;
     if (selected.some((s) => s.resourceId === r.id)) return;
-    setSelected((prev) => [...prev, { resourceId: r.id, resource: r, note: "" }]);
+    setSelected((prev) => [...prev, { resourceId: r.id, resource: r, note: "", recommenderName: "" }]);
     setSearch("");
     setResults([]);
   }
@@ -102,12 +104,16 @@ export default function ManagerFeaturedPage() {
     setSelected((prev) => prev.map((s) => s.resourceId === resourceId ? { ...s, note } : s));
   }
 
+  function updateRecommender(resourceId: string, recommenderName: string) {
+    setSelected((prev) => prev.map((s) => s.resourceId === resourceId ? { ...s, recommenderName } : s));
+  }
+
   async function save() {
     setSaving(true);
     await fetch("/api/manager/featured", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ month, year, books: selected.map((s) => ({ resourceId: s.resourceId, note: s.note || undefined })) }),
+      body: JSON.stringify({ month, year, books: selected.map((s) => ({ resourceId: s.resourceId, note: s.note || undefined, recommenderName: s.recommenderName || undefined })) }),
     });
     setSaving(false);
     setSavedMessage("Saved!");
@@ -202,14 +208,24 @@ export default function ManagerFeaturedPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 text-sm truncate">{s.resource.title}</p>
                       <p className="text-xs text-gray-500 mb-2">{s.resource.author}</p>
-                      <input
-                        type="text"
-                        value={s.note}
-                        onChange={(e) => updateNote(s.resourceId, e.target.value)}
-                        placeholder="Add a note for readers (optional)"
-                        maxLength={200}
-                        className="w-full text-sm px-3 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400"
-                      />
+                      <div className="space-y-1.5">
+                        <input
+                          type="text"
+                          value={s.recommenderName}
+                          onChange={(e) => updateRecommender(s.resourceId, e.target.value)}
+                          placeholder="Recommended by (e.g. Pastor John)"
+                          maxLength={100}
+                          className="w-full text-sm px-3 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400"
+                        />
+                        <input
+                          type="text"
+                          value={s.note}
+                          onChange={(e) => updateNote(s.resourceId, e.target.value)}
+                          placeholder="Add a note for readers (optional)"
+                          maxLength={200}
+                          className="w-full text-sm px-3 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400"
+                        />
+                      </div>
                     </div>
                     <button
                       onClick={() => removeBook(s.resourceId)}

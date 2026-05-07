@@ -42,7 +42,7 @@ export async function PUT(req: NextRequest) {
   const { month, year, books } = await req.json() as {
     month: number;
     year: number;
-    books: { resourceId: string; note?: string }[];
+    books: { resourceId: string; note?: string; recommenderName?: string }[];
   };
 
   if (!month || !year || !Array.isArray(books)) {
@@ -59,6 +59,7 @@ export async function PUT(req: NextRequest) {
           year,
           displayOrder: i,
           note: b.note || null,
+          recommenderName: b.recommenderName || null,
         },
       })
     ),

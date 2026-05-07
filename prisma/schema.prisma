@@ -115,9 +115,10 @@ model FeaturedBook {
   resourceId   String
   month        Int
   year         Int
-  displayOrder Int      @default(0)
-  note         String?
-  resource     Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  displayOrder    Int      @default(0)
+  note            String?
+  recommenderName String?
+  resource        Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
   @@unique([resourceId, month, year])
   @@index([month, year])

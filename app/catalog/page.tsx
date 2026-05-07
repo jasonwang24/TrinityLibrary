@@ -24,6 +24,26 @@ interface Tag {
   color: string;
 }
 
+interface FeaturedEntry {
+  id: string;
+  note: string | null;
+  recommenderName: string | null;
+  resource: {
+    id: string;
+    title: string;
+    author: string;
+    coverImage?: string;
+    isbn?: string;
+    copies: { status: string }[];
+  };
+}
+
+function featuredCoverUrl(r: FeaturedEntry["resource"]) {
+  if (r.coverImage) return `https://books.google.com/books/content?id=${r.coverImage}&printsec=frontcover&img=1&zoom=2`;
+  if (r.isbn) return `https://covers.openlibrary.org/b/isbn/${r.isbn}-M.jpg`;
+  return null;
+}
+
 export default function CatalogPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-center"><div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" /><div className="text-sm text-gray-500">Loading catalog...</div></div></div>}>
@@ -54,8 +74,13 @@ function CatalogContent() {
   const isInitialRender = useRef(true);
   const PAGE_SIZE = 20;
 
+  const [featured, setFeatured] = useState<FeaturedEntry[]>([]);
+
   useEffect(() => {
     fetch("/api/tags").then((r) => r.json()).then(setTags);
+    fetch("/api/featured").then((r) => r.json()).then((data) => {
+      if (Array.isArray(data)) setFeatured(data);
+    });
   }, []);
 
   // Debounce search input by 400ms
@@ -178,6 +203,64 @@ function CatalogContent() {
             </button>
           </div>
         </div>
+
+        {featured.length > 0 && (
+          <div className="mb-6 bg-amber-50 border border-amber-100 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Star size={15} className="text-amber-500 fill-amber-500 shrink-0" />
+              <span className="text-sm font-semibold text-gray-800">Leadership recommendations</span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-1 -mb-1">
+              {featured.map((entry) => {
+                const url = featuredCoverUrl(entry.resource);
+                const available = entry.resource.copies.some((c) => c.status === "AVAILABLE");
+                return (
+                  <Link
+                    key={entry.id}
+                    href={`/catalog/${entry.resource.id}`}
+                    className="flex-none w-28 group"
+                  >
+                    <div className="aspect-[2/3] rounded-lg overflow-hidden bg-blue-100 mb-2 shadow-sm relative">
+                      {url ? (
+                        <img
+                          src={url}
+                          alt={entry.resource.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                            (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
+                          }}
+                        />
+                      ) : null}
+                      <div className={`absolute inset-0 flex items-center justify-center ${url ? "hidden" : ""}`}>
+                        <BookOpen size={28} className="text-blue-200" strokeWidth={1} />
+                      </div>
+                      {!available && (
+                        <div className="absolute bottom-0 inset-x-0 bg-black/40 text-white text-[10px] text-center py-0.5 font-medium">
+                          Checked out
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold text-gray-900 line-clamp-2 leading-snug group-hover:text-blue-700 transition-colors">
+                      {entry.resource.title}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5 truncate">{entry.resource.author}</p>
+                    {entry.recommenderName && (
+                      <p className="text-[11px] text-amber-600 font-medium mt-1 truncate">
+                        — {entry.recommenderName}
+                      </p>
+                    )}
+                    {entry.note && (
+                      <p className="text-[11px] text-gray-500 italic mt-0.5 line-clamp-2 leading-snug">
+                        &ldquo;{entry.note}&rdquo;
+                      </p>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex gap-3 mb-4">

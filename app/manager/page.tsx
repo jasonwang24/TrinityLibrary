@@ -2,9 +2,9 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
-import { Users, BookOpen, Plus, Tag, ClipboardList } from "lucide-react";
+import { Users, BookOpen, Plus, Tag, ClipboardList, Star } from "lucide-react";
 
 export default function ManagerPage() {
   const { data: session, status } = useSession();
@@ -53,6 +53,13 @@ export default function ManagerPage() {
       color: "bg-green-100 text-green-600",
     },
     {
+      href: "/manager/featured",
+      icon: <Star size={32} />,
+      title: "Featured Books",
+      description: "Spotlight books for the current and next month",
+      color: "bg-yellow-100 text-yellow-600",
+    },
+    {
       href: "/catalog",
       icon: <BookOpen size={32} />,
       title: "Browse Catalog",
@@ -69,7 +76,7 @@ export default function ManagerPage() {
           <p className="text-gray-600">Manage resources, tags, and library settings</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => (
             <Link
               key={card.href}

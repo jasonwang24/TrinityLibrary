@@ -86,27 +86,41 @@ model Account {
 }
 
 model Resource {
-  id          String       @id @default(cuid())
-  title       String
-  author      String
-  isbn        String?
-  description String?
-  coverImage  String?
-  type        ResourceType @default(BOOK)
-  publisher   String?
-  year        Int?
-  digitalUrl  String?
-  sortOrder   Int          @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  copies      Copy[]
-  tags        ResourceTag[]
-  holds       Hold[]
-  reviews     Review[]
+  id            String         @id @default(cuid())
+  title         String
+  author        String
+  isbn          String?
+  description   String?
+  coverImage    String?
+  type          ResourceType   @default(BOOK)
+  publisher     String?
+  year          Int?
+  digitalUrl    String?
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  copies        Copy[]
+  tags          ResourceTag[]
+  holds         Hold[]
+  reviews       Review[]
+  featuredBooks FeaturedBook[]
 
   @@index([title])
   @@index([author])
   @@index([isbn])
+}
+
+model FeaturedBook {
+  id           String   @id @default(cuid())
+  resourceId   String
+  month        Int
+  year         Int
+  displayOrder Int      @default(0)
+  note         String?
+  resource     Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, month, year])
+  @@index([month, year])
 }
 
 model Copy {

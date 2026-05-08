@@ -11,22 +11,31 @@ function seededRandom(seed: number) {
 export default function SplashScreen() {
   const [phase, setPhase] = useState<"start" | "logo" | "text" | "out" | "done">("start");
   const [mounted, setMounted] = useState(false);
+  const [skip, setSkip] = useState(false);
 
   useEffect(() => {
+    if (sessionStorage.getItem("splashShown")) {
+      setSkip(true);
+      return;
+    }
     setMounted(true);
   }, []);
 
   useEffect(() => {
+    if (skip) return;
     const timers = [
       setTimeout(() => setPhase("logo"), 200),
       setTimeout(() => setPhase("text"), 1000),
       setTimeout(() => setPhase("out"), 2500),
-      setTimeout(() => setPhase("done"), 3200),
+      setTimeout(() => {
+        setPhase("done");
+        sessionStorage.setItem("splashShown", "1");
+      }, 3200),
     ];
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [skip]);
 
-  if (phase === "done") return null;
+  if (skip || phase === "done") return null;
 
   const visible = phase !== "start";
   const textVisible = phase === "text" || phase === "out";

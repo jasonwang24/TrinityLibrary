@@ -75,9 +75,12 @@ export async function GET(req: NextRequest) {
 
   if (sort === "rating") {
     const all = await prisma.resource.findMany({ where, select, orderBy: { title: "asc" } });
-    const withRatings = attachRatings(all).sort(
-      (a, b) => (b._avgRating ?? -1) - (a._avgRating ?? -1)
-    );
+    const withRatings = attachRatings(all).sort((a, b) => {
+      if (a._avgRating === null && b._avgRating === null) return 0;
+      if (a._avgRating === null) return 1;
+      if (b._avgRating === null) return -1;
+      return b._avgRating - a._avgRating;
+    });
     const resources = withRatings.slice((page - 1) * limit, page * limit);
     return NextResponse.json({ resources, total: all.length, page, totalPages: Math.ceil(all.length / limit) });
   }

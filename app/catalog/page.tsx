@@ -69,6 +69,7 @@ function CatalogContent() {
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"gallery" | "spreadsheet">("gallery");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "checked-out">((searchParams.get("availability") as any) || "all");
+  const [sortMode, setSortMode] = useState<"title" | "rating">("title");
   const contentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isInitialRender = useRef(true);
@@ -97,7 +98,7 @@ function CatalogContent() {
     setResources([]);
     setPage(1);
     setHasMore(true);
-  }, [debouncedSearch, tagFilter, availabilityFilter]);
+  }, [debouncedSearch, tagFilter, availabilityFilter, sortMode]);
 
   useEffect(() => {
     if (search.toLowerCase() === "trinity library" && !easterEggFired.current) {
@@ -122,6 +123,7 @@ function CatalogContent() {
 
     urlParams.set("page", String(page));
     urlParams.set("limit", String(PAGE_SIZE));
+    if (sortMode === "rating") urlParams.set("sort", "rating");
     fetch(`/api/resources?${urlParams}`)
       .then((r) => r.json())
       .then((data) => {
@@ -304,7 +306,8 @@ function CatalogContent() {
             </button>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap gap-6">
+            <div>
             <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
               <Filter size={16} />
               Availability
@@ -340,6 +343,36 @@ function CatalogContent() {
               >
                 Checked Out
               </button>
+            </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <Star size={16} />
+                Sort
+              </label>
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => setSortMode("title")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    sortMode === "title"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Title A–Z
+                </button>
+                <button
+                  onClick={() => setSortMode("rating")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    sortMode === "rating"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Highest Rated
+                </button>
+              </div>
             </div>
           </div>
 

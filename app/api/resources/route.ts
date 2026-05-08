@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
   const query = searchParams.get("q") || "";
   const tag = searchParams.get("tag");
   const availability = searchParams.get("availability");
+  const sort = searchParams.get("sort");
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
 
@@ -50,36 +51,43 @@ export async function GET(req: NextRequest) {
     where.copies = { every: { status: { not: "AVAILABLE" } } };
   }
 
+  const select = {
+    id: true,
+    title: true,
+    author: true,
+    isbn: true,
+    coverImage: true,
+    type: true,
+    copies: { select: { id: true, status: true } },
+    tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+    reviews: { select: { rating: true } },
+  };
+
+  function attachRatings<T extends { reviews: { rating: number }[] }>(rows: T[]) {
+    return rows.map((r) => {
+      const avgRating = r.reviews.length > 0
+        ? r.reviews.reduce((sum, rev) => sum + rev.rating, 0) / r.reviews.length
+        : null;
+      const { reviews, ...rest } = r;
+      return { ...rest, _avgRating: avgRating, _reviewCount: reviews.length };
+    });
+  }
+
+  if (sort === "rating") {
+    const all = await prisma.resource.findMany({ where, select, orderBy: { title: "asc" } });
+    const withRatings = attachRatings(all).sort(
+      (a, b) => (b._avgRating ?? -1) - (a._avgRating ?? -1)
+    );
+    const resources = withRatings.slice((page - 1) * limit, page * limit);
+    return NextResponse.json({ resources, total: all.length, page, totalPages: Math.ceil(all.length / limit) });
+  }
+
   const [resourcesRaw, total] = await Promise.all([
-    prisma.resource.findMany({
-      where,
-      select: {
-        id: true,
-        title: true,
-        author: true,
-        isbn: true,
-        coverImage: true,
-        type: true,
-        copies: { select: { id: true, status: true } },
-        tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
-        reviews: { select: { rating: true } },
-      },
-      orderBy: { title: "asc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
+    prisma.resource.findMany({ where, select, orderBy: { title: "asc" }, skip: (page - 1) * limit, take: limit }),
     prisma.resource.count({ where }),
   ]);
 
-  const resources = resourcesRaw.map((r) => {
-    const avgRating = r.reviews.length > 0
-      ? r.reviews.reduce((sum, rev) => sum + rev.rating, 0) / r.reviews.length
-      : null;
-    const { reviews, ...rest } = r;
-    return { ...rest, _avgRating: avgRating, _reviewCount: reviews.length };
-  });
-
-  return NextResponse.json({ resources, total, page, totalPages: Math.ceil(total / limit) });
+  return NextResponse.json({ resources: attachRatings(resourcesRaw), total, page, totalPages: Math.ceil(total / limit) });
 }
 
 export async function POST(req: NextRequest) {

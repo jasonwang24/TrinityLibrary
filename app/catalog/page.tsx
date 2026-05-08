@@ -69,13 +69,32 @@ function CatalogContent() {
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"gallery" | "spreadsheet">("gallery");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "checked-out">((searchParams.get("availability") as any) || "all");
-  const [sortMode, setSortMode] = useState<"title" | "rating">("title");
+  const [sortMode, setSortMode] = useState<"title" | "rating">((searchParams.get("sort") as "title" | "rating") || "title");
   const contentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isInitialRender = useRef(true);
+  const skipFetch = useRef(false);
   const PAGE_SIZE = 20;
 
   const [featured, setFeatured] = useState<FeaturedEntry[]>([]);
+
+  // Restore state when returning from a book page
+  useEffect(() => {
+    if (!sessionStorage.getItem("fromCatalog")) return;
+    sessionStorage.removeItem("fromCatalog");
+    const cached = sessionStorage.getItem("catalogCache");
+    if (!cached) return;
+    try {
+      const { resources, total, page, hasMore, scrollY } = JSON.parse(cached);
+      setResources(resources);
+      setTotal(total);
+      setPage(page);
+      setHasMore(hasMore);
+      setLoading(false);
+      skipFetch.current = true;
+      if (scrollY) requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     fetch("/api/tags").then((r) => r.json()).then(setTags);
@@ -83,6 +102,12 @@ function CatalogContent() {
       if (Array.isArray(data)) setFeatured(data);
     });
   }, []);
+
+  // Keep cache fresh so back navigation restores the latest list
+  useEffect(() => {
+    if (resources.length === 0) return;
+    sessionStorage.setItem("catalogCache", JSON.stringify({ resources, total, page, hasMore }));
+  }, [resources, total, page, hasMore]);
 
   // Debounce search input by 400ms
   useEffect(() => {
@@ -110,6 +135,11 @@ function CatalogContent() {
   }, [search, triggerEasterEgg]);
 
   useEffect(() => {
+    if (skipFetch.current) {
+      skipFetch.current = false;
+      return;
+    }
+
     const isFirstPage = page === 1;
     if (isFirstPage) setLoading(true);
     else setLoadingMore(true);
@@ -118,12 +148,12 @@ function CatalogContent() {
     if (debouncedSearch) urlParams.set("q", debouncedSearch);
     if (tagFilter) urlParams.set("tag", tagFilter);
     if (availabilityFilter !== "all") urlParams.set("availability", availabilityFilter);
+    if (sortMode === "rating") urlParams.set("sort", "rating");
 
     window.history.replaceState(null, "", `/catalog${urlParams.toString() ? `?${urlParams}` : ""}`);
 
     urlParams.set("page", String(page));
     urlParams.set("limit", String(PAGE_SIZE));
-    if (sortMode === "rating") urlParams.set("sort", "rating");
     fetch(`/api/resources?${urlParams}`)
       .then((r) => r.json())
       .then((data) => {
@@ -166,6 +196,16 @@ function CatalogContent() {
       // Don't set surpriseLoading to false — let it spin until navigation completes
     } else {
       setSurpriseLoading(false);
+    }
+  }
+
+  function handleBookClick() {
+    sessionStorage.setItem("fromCatalog", "1");
+    const cached = sessionStorage.getItem("catalogCache");
+    if (cached) {
+      try {
+        sessionStorage.setItem("catalogCache", JSON.stringify({ ...JSON.parse(cached), scrollY: window.scrollY }));
+      } catch {}
     }
   }
 
@@ -431,6 +471,7 @@ function CatalogContent() {
                 <Link
                   key={r.id}
                   href={`/catalog/${r.id}`}
+                  onClick={handleBookClick}
                   className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
                 >
                   <div className="aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 relative flex items-center justify-center overflow-hidden">
@@ -527,7 +568,7 @@ function CatalogContent() {
                     return (
                       <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
-                          <Link href={`/catalog/${r.id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                          <Link href={`/catalog/${r.id}`} onClick={handleBookClick} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">
                             {r.title}
                           </Link>
                         </td>

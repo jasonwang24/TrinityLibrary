@@ -133,7 +133,7 @@ function CatalogContent() {
         setLoading(false);
         setLoadingMore(false);
       });
-  }, [debouncedSearch, tagFilter, availabilityFilter, page]);
+  }, [debouncedSearch, tagFilter, availabilityFilter, sortMode, page]);
 
   // Intersection observer for infinite scroll
   useEffect(() => {

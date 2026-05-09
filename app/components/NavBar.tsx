@@ -78,6 +78,7 @@ export default function NavBar() {
           </Link>
 
           <div className={`absolute left-1/2 -translate-x-1/2 items-center gap-1 ${sessionLoading ? "hidden" : "hidden md:flex"}`}>
+            {session && (
             <Link
               href="/catalog"
               className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
@@ -89,6 +90,7 @@ export default function NavBar() {
               <BookOpen size={18} />
               Catalog
             </Link>
+            )}
 
             {!sessionLoading && session && (
               <Link
@@ -199,6 +201,7 @@ export default function NavBar() {
 
         {showMobileMenu && (
           <div className="md:hidden border-t border-gray-200 py-2 flex flex-col gap-1">
+            {session && (
             <Link
               href="/catalog"
               className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
@@ -208,6 +211,7 @@ export default function NavBar() {
               <BookOpen size={18} />
               Catalog
             </Link>
+            )}
             {!sessionLoading && session && (
               <Link
                 href="/dashboard"

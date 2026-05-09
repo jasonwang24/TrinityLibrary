@@ -67,22 +67,33 @@ function HomeContent() {
             Book Library
           </p>
 
-          <div className="grid grid-cols-2 gap-3 w-full" style={{ minWidth: "360px" }}>
-            <Link
-              href="/catalog"
-              className={`bg-white text-blue-900 px-6 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-black/10 whitespace-nowrap ${sessionLoading ? "opacity-0" : "opacity-100"}`}
-            >
-              <Search size={18} />
-              Browse Catalog
-            </Link>
-
-            <Link
-              href={session ? "/dashboard" : "/login"}
-              className={`bg-white/15 text-white border border-white/20 px-6 py-3.5 rounded-xl font-semibold hover:bg-white/25 transition-all text-center flex items-center justify-center gap-2 whitespace-nowrap ${sessionLoading ? "opacity-0" : "opacity-100"}`}
-            >
-              {session ? "My Dashboard" : "Sign In"}
-              <ArrowRight size={18} />
-            </Link>
+          <div className={`flex gap-3 w-full ${sessionLoading ? "opacity-0" : "opacity-100"}`} style={{ minWidth: "360px" }}>
+            {session ? (
+              <>
+                <Link
+                  href="/catalog"
+                  className="flex-1 bg-white text-blue-900 px-6 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-black/10 whitespace-nowrap"
+                >
+                  <Search size={18} />
+                  Browse Catalog
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="flex-1 bg-white/15 text-white border border-white/20 px-6 py-3.5 rounded-xl font-semibold hover:bg-white/25 transition-all text-center flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  My Dashboard
+                  <ArrowRight size={18} />
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="flex-1 bg-white text-blue-900 px-6 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-black/10"
+              >
+                Sign In
+                <ArrowRight size={18} />
+              </Link>
+            )}
           </div>
         </div>
       </div>

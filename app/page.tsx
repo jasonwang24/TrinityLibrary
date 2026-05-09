@@ -86,13 +86,16 @@ function HomeContent() {
                 </Link>
               </>
             ) : (
-              <Link
-                href="/login"
-                className="flex-1 bg-white text-blue-900 px-6 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-black/10"
-              >
-                Sign In
-                <ArrowRight size={18} />
-              </Link>
+              <div className="flex-1 flex flex-col items-center gap-2">
+                <Link
+                  href="/login"
+                  className="w-full bg-white text-blue-900 px-6 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-black/10"
+                >
+                  Sign In
+                  <ArrowRight size={18} />
+                </Link>
+                <p className="text-blue-200/60 text-xs">Sign in to browse the catalog</p>
+              </div>
             )}
           </div>
         </div>

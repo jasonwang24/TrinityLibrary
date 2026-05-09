@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -50,11 +50,16 @@ export default function ResourceDetailPage() {
   const [reviewText, setReviewText] = useState("");
   const [reviewHover, setReviewHover] = useState(0);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [coverLoaded, setCoverLoaded] = useState(false);
+  const [coverSearch, setCoverSearch] = useState("");
+  const [coverResults, setCoverResults] = useState<{ id: string; title: string; thumbnail?: string }[]>([]);
+  const [coverSearching, setCoverSearching] = useState(false);
   const [editForm, setEditForm] = useState({
     title: "",
     author: "",
     description: "",
     isbn: "",
+    coverImage: "",
     publisher: "",
     year: "",
     selectedTagIds: [] as string[],
@@ -86,6 +91,7 @@ export default function ResourceDetailPage() {
   }, [editing]);
 
   function fetchResource() {
+    setCoverLoaded(false);
     fetch(`/api/resources/${id}`)
       .then((r) => r.json())
       .then(setResource);
@@ -104,6 +110,7 @@ export default function ResourceDetailPage() {
       author: resource.author,
       description: resource.description || "",
       isbn: resource.isbn || "",
+      coverImage: resource.coverImage || "",
       publisher: resource.publisher || "",
       year: resource.year ? String(resource.year) : "",
       selectedTagIds: resource.tags.map((t) => t.tag.id),
@@ -115,7 +122,25 @@ export default function ResourceDetailPage() {
         canDelete: c.status === "AVAILABLE",
       })),
     });
+    setCoverSearch("");
+    setCoverResults([]);
     setEditing(true);
+  }
+
+  async function searchGoogleBooks() {
+    if (!coverSearch.trim()) return;
+    setCoverSearching(true);
+    try {
+      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(coverSearch)}&maxResults=8`);
+      const data = await res.json();
+      setCoverResults((data.items ?? []).map((item: any) => ({
+        id: item.id,
+        title: item.volumeInfo?.title ?? "",
+        thumbnail: item.volumeInfo?.imageLinks?.thumbnail?.replace("http:", "https:"),
+      })));
+    } finally {
+      setCoverSearching(false);
+    }
   }
 
   async function handleSave() {
@@ -127,6 +152,7 @@ export default function ResourceDetailPage() {
         author: editForm.author,
         description: editForm.description || undefined,
         isbn: editForm.isbn || undefined,
+        coverImage: editForm.coverImage || null,
         publisher: editForm.publisher || undefined,
         year: editForm.year ? parseInt(editForm.year) : undefined,
         tagIds: editForm.selectedTagIds,
@@ -340,6 +366,69 @@ export default function ResourceDetailPage() {
               </div>
 
               <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Cover Image</p>
+                <div className="flex gap-3 mb-3">
+                  {editForm.coverImage && (
+                    <img
+                      src={`https://books.google.com/books/content?id=${editForm.coverImage}&printsec=frontcover&img=1&zoom=2`}
+                      alt="Current cover"
+                      className="w-16 h-24 object-cover rounded shadow-sm shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={coverSearch}
+                        onChange={(e) => setCoverSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && searchGoogleBooks()}
+                        placeholder="Search Google Books by title or author…"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={searchGoogleBooks}
+                        disabled={coverSearching}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60 shrink-0"
+                      >
+                        {coverSearching ? "…" : "Search"}
+                      </button>
+                    </div>
+                    {editForm.coverImage && (
+                      <button
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, coverImage: "" })}
+                        className="text-xs text-red-500 hover:underline"
+                      >
+                        Remove cover
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {coverResults.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {coverResults.map((result) => (
+                      <button
+                        key={result.id}
+                        type="button"
+                        onClick={() => { setEditForm({ ...editForm, coverImage: result.id }); setCoverResults([]); setCoverSearch(""); }}
+                        className={`relative rounded-lg overflow-hidden border-2 transition-all ${editForm.coverImage === result.id ? "border-blue-500" : "border-transparent hover:border-blue-300"}`}
+                        title={result.title}
+                      >
+                        {result.thumbnail ? (
+                          <img src={result.thumbnail} alt={result.title} className="w-full aspect-[2/3] object-cover" />
+                        ) : (
+                          <div className="w-full aspect-[2/3] bg-gray-100 flex items-center justify-center">
+                            <BookOpen size={20} className="text-gray-300" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">Categories</p>
                 <div className="flex flex-wrap gap-2">
                   {allTags.map((tag) => (
@@ -403,8 +492,8 @@ export default function ResourceDetailPage() {
             <div className="grid md:grid-cols-3 gap-8 p-8">
               <div className="md:col-span-1">
                 <div
-                  className={`aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center mb-4 overflow-hidden ${resource.coverImage || resource.isbn ? "cursor-pointer" : ""}`}
-                  onClick={() => (resource.coverImage || resource.isbn) && setShowPreview(true)}
+                  className={`aspect-[3/4] bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg flex items-center justify-center mb-4 overflow-hidden ${coverLoaded ? "cursor-pointer" : ""}`}
+                  onClick={() => coverLoaded && setShowPreview(true)}
                 >
                   {(resource.coverImage || resource.isbn) ? (
                     <img
@@ -416,16 +505,16 @@ export default function ResourceDetailPage() {
                       onLoad={(e) => {
                         if (e.currentTarget.naturalWidth <= 1) {
                           e.currentTarget.style.display = "none";
-                          (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
+                        } else {
+                          setCoverLoaded(true);
                         }
                       }}
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
-                        (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
                       }}
                     />
                   ) : null}
-                  <BookOpen className={`text-blue-300 absolute ${resource.coverImage || resource.isbn ? "hidden" : ""}`} size={80} />
+                  {!coverLoaded && <BookOpen className="text-blue-300" size={80} />}
                 </div>
 
                 <div className="mb-4">

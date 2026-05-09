@@ -122,14 +122,16 @@ export default function NavBar() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              aria-label="Toggle menu"
-            >
-              {showMobileMenu ? <X size={22} /> : <Menu size={22} />}
-            </button>
+            {session && (
+              <button
+                type="button"
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                aria-label="Toggle menu"
+              >
+                {showMobileMenu ? <X size={22} /> : <Menu size={22} />}
+              </button>
+            )}
 
             <div className="relative" ref={menuRef}>
             {sessionLoading ? null : session ? (

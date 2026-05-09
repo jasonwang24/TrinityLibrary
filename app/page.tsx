@@ -52,7 +52,7 @@ function HomeContent() {
 
       {/* content */}
       <div className="relative flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-12">
-        <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-10 py-10 flex flex-col items-center shadow-2xl shadow-black/20">
+        <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-6 py-8 sm:px-10 sm:py-10 flex flex-col items-center shadow-2xl shadow-black/20 w-full max-w-sm">
           <div className="mb-2">
             <Image
               src="/trinity-logo-vertical.png"
@@ -67,7 +67,7 @@ function HomeContent() {
             Book Library
           </p>
 
-          <div className={`flex gap-3 w-full ${sessionLoading ? "opacity-0" : "opacity-100"}`} style={{ minWidth: "360px" }}>
+          <div className={`flex gap-3 w-full ${sessionLoading ? "opacity-0" : "opacity-100"}`}>
             {session ? (
               <>
                 <Link

@@ -52,7 +52,7 @@ function HomeContent() {
 
       {/* content */}
       <div className="relative flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-12">
-        <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-6 py-8 sm:px-10 sm:py-10 flex flex-col items-center shadow-2xl shadow-black/20 w-full max-w-sm">
+        <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-6 py-8 sm:px-10 sm:py-10 flex flex-col items-center shadow-2xl shadow-black/20 w-[min(100%,420px)]">
           <div className="mb-2">
             <Image
               src="/trinity-logo-vertical.png"
@@ -72,14 +72,14 @@ function HomeContent() {
               <>
                 <Link
                   href="/catalog"
-                  className="flex-1 bg-white text-blue-900 px-6 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-black/10 whitespace-nowrap"
+                  className="flex-1 bg-white text-blue-900 px-5 py-3.5 rounded-xl font-semibold hover:bg-blue-50 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-black/10"
                 >
                   <Search size={18} />
                   Browse Catalog
                 </Link>
                 <Link
                   href="/dashboard"
-                  className="flex-1 bg-white/15 text-white border border-white/20 px-6 py-3.5 rounded-xl font-semibold hover:bg-white/25 transition-all text-center flex items-center justify-center gap-2 whitespace-nowrap"
+                  className="flex-1 bg-white/15 text-white border border-white/20 px-5 py-3.5 rounded-xl font-semibold hover:bg-white/25 transition-all text-center flex items-center justify-center gap-2"
                 >
                   My Dashboard
                   <ArrowRight size={18} />

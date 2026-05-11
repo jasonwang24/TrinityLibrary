@@ -40,10 +40,8 @@ interface FeaturedEntry {
 
 function featuredCoverUrl(r: FeaturedEntry["resource"]) {
   if (r.coverImage) {
-    if (!r.coverImage.startsWith("http")) return `/api/books/cover/${r.coverImage}`;
-    if (r.coverImage.includes("fife=")) return r.coverImage.replace(/fife=w\d+-h\d+/, "fife=w800-h1200").replace("&source=gbs_api", "");
-    if (r.coverImage.includes("zoom=")) return r.coverImage.replace(/zoom=\d+/, "zoom=3").replace("&edge=curl", "").replace("&source=gbs_api", "");
-    return r.coverImage;
+    const segment = r.coverImage.startsWith("http") ? encodeURIComponent(r.coverImage) : r.coverImage;
+    return `/api/books/cover/${segment}`;
   }
   if (r.isbn) return `https://covers.openlibrary.org/b/isbn/${r.isbn}-M.jpg`;
   return null;
@@ -483,7 +481,7 @@ function CatalogContent() {
                     {(r.coverImage || r.isbn) ? (
                       <img
                         src={r.coverImage
-                          ? (r.coverImage.startsWith("http") ? r.coverImage : `/api/books/cover/${r.coverImage}`)
+                          ? (r.coverImage.startsWith("http") ? `/api/books/cover/${encodeURIComponent(r.coverImage)}` : `/api/books/cover/${r.coverImage}`)
                           : `https://covers.openlibrary.org/b/isbn/${r.isbn}-L.jpg`}
                         alt={r.title}
                         loading="lazy"
@@ -495,8 +493,6 @@ function CatalogContent() {
                           }
                         }}
                         onError={(e) => {
-                          const fallback = r.coverImage?.startsWith("http") ? r.coverImage : null;
-                          if (fallback && e.currentTarget.src !== fallback) { e.currentTarget.src = fallback; return; }
                           e.currentTarget.style.display = "none";
                           (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
                         }}

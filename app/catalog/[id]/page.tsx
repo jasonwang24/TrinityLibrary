@@ -50,6 +50,15 @@ export default function ResourceDetailPage() {
   const [reviewText, setReviewText] = useState("");
   const [reviewHover, setReviewHover] = useState(0);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  function resolveCoverUrl(coverImage: string | null | undefined, isbn?: string | null): string | null {
+    if (coverImage) {
+      if (coverImage.startsWith("http")) return coverImage;
+      return `/api/books/cover/${coverImage}`;
+    }
+    if (isbn) return `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+    return null;
+  }
+
   const [coverLoaded, setCoverLoaded] = useState(false);
   const [coverSearch, setCoverSearch] = useState("");
   const [coverResults, setCoverResults] = useState<{ id: string; title: string; thumbnail?: string }[]>([]);
@@ -370,7 +379,7 @@ export default function ResourceDetailPage() {
                 <div className="flex gap-3 mb-3">
                   {editForm.coverImage && (
                     <img
-                      src={editForm.coverImage.startsWith("http") ? editForm.coverImage : `https://books.google.com/books/content?id=${editForm.coverImage}&printsec=frontcover&img=1&zoom=2`}
+                      src={resolveCoverUrl(editForm.coverImage) ?? ""}
                       alt="Current cover"
                       className="w-16 h-24 object-cover rounded shadow-sm shrink-0"
                     />
@@ -412,10 +421,7 @@ export default function ResourceDetailPage() {
                         key={result.id}
                         type="button"
                         onClick={() => {
-                          const url = result.thumbnail
-                            ? result.thumbnail.replace("http:", "https:")
-                            : null;
-                          setEditForm({ ...editForm, coverImage: url ?? result.id });
+                          setEditForm({ ...editForm, coverImage: result.id });
                           setCoverResults([]);
                           setCoverSearch("");
                         }}
@@ -504,9 +510,7 @@ export default function ResourceDetailPage() {
                 >
                   {(resource.coverImage || resource.isbn) ? (
                     <img
-                      src={resource.coverImage
-                        ? (resource.coverImage.startsWith("http") ? resource.coverImage : `https://books.google.com/books/content?id=${resource.coverImage}&printsec=frontcover&img=1&zoom=3`)
-                        : `https://covers.openlibrary.org/b/isbn/${resource.isbn}-L.jpg`}
+                      src={resolveCoverUrl(resource.coverImage, resource.isbn) ?? ""}
                       alt={resource.title}
                       className="w-full h-full object-cover rounded-lg"
                       onLoad={(e) => {
@@ -882,9 +886,7 @@ export default function ResourceDetailPage() {
               <X size={32} />
             </button>
             <img
-              src={resource.coverImage
-                ? (resource.coverImage.startsWith("http") ? resource.coverImage : `https://books.google.com/books/content?id=${resource.coverImage}&printsec=frontcover&img=1&zoom=0`)
-                : `https://covers.openlibrary.org/b/isbn/${resource.isbn}-L.jpg`}
+              src={resolveCoverUrl(resource.coverImage, resource.isbn) ?? ""}
               alt={resource.title}
               className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}

@@ -131,7 +131,7 @@ export default function ResourceDetailPage() {
     if (!coverSearch.trim()) return;
     setCoverSearching(true);
     try {
-      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(coverSearch)}&maxResults=8`);
+      const res = await fetch(`/api/books/search?q=${encodeURIComponent(coverSearch)}`);
       const data = await res.json();
       setCoverResults((data.items ?? []).map((item: any) => ({
         id: item.id,

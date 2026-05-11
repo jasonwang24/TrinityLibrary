@@ -51,10 +51,7 @@ export default function ResourceDetailPage() {
   const [reviewHover, setReviewHover] = useState(0);
   const [showReviewForm, setShowReviewForm] = useState(false);
   function resolveCoverUrl(coverImage: string | null | undefined, isbn?: string | null): string | null {
-    if (coverImage) {
-      const segment = coverImage.startsWith("http") ? encodeURIComponent(coverImage) : coverImage;
-      return `/api/books/cover/${segment}`;
-    }
+    if (coverImage) return coverImage.startsWith("http") ? coverImage : `https://books.google.com/books/content?id=${coverImage}&printsec=frontcover&img=1&zoom=1`;
     if (isbn) return `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
     return null;
   }

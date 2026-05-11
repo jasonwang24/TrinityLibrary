@@ -37,10 +37,7 @@ const MONTH_NAMES = [
 ];
 
 function coverUrl(r: Resource) {
-  if (r.coverImage) {
-    const segment = r.coverImage.startsWith("http") ? encodeURIComponent(r.coverImage) : r.coverImage;
-    return `/api/books/cover/${segment}`;
-  }
+  if (r.coverImage) return r.coverImage.startsWith("http") ? r.coverImage : `https://books.google.com/books/content?id=${r.coverImage}&printsec=frontcover&img=1&zoom=1`;
   if (r.isbn) return `https://covers.openlibrary.org/b/isbn/${r.isbn}-M.jpg`;
   return null;
 }

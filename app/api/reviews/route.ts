@@ -24,22 +24,6 @@ export async function POST(req: NextRequest) {
 
   const { resourceId, rating, text } = parsed.data;
 
-  // Verify user has returned this book at least once
-  const completedCheckout = await prisma.checkout.findFirst({
-    where: {
-      userId: session.user.id,
-      returnedAt: { not: null },
-      copy: { resourceId },
-    },
-  });
-
-  if (!completedCheckout) {
-    return NextResponse.json(
-      { error: "You can only review books you've checked out and returned" },
-      { status: 403 }
-    );
-  }
-
   const review = await prisma.review.upsert({
     where: {
       resourceId_userId: { resourceId, userId: session.user.id },

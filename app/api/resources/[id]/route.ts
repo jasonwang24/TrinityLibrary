@@ -14,7 +14,7 @@ const updateResourceSchema = z.object({
   author: z.string().min(1).max(500).optional(),
   isbn: z.string().max(20).nullable().optional(),
   description: z.string().max(5000).nullable().optional(),
-  coverImage: z.string().max(200).nullable().optional(),
+  coverImage: z.string().max(500).nullable().optional(),
   type: z.enum(["BOOK", "EBOOK", "JOURNAL", "MAGAZINE", "AUDIOBOOK", "DVD", "OTHER"]).optional(),
   publisher: z.string().max(200).nullable().optional(),
   year: z.number().int().min(0).max(9999).nullable().optional(),

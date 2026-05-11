@@ -370,7 +370,7 @@ export default function ResourceDetailPage() {
                 <div className="flex gap-3 mb-3">
                   {editForm.coverImage && (
                     <img
-                      src={`https://books.google.com/books/content?id=${editForm.coverImage}&printsec=frontcover&img=1&zoom=2`}
+                      src={editForm.coverImage.startsWith("http") ? editForm.coverImage : `https://books.google.com/books/content?id=${editForm.coverImage}&printsec=frontcover&img=1&zoom=2`}
                       alt="Current cover"
                       className="w-16 h-24 object-cover rounded shadow-sm shrink-0"
                     />
@@ -411,7 +411,14 @@ export default function ResourceDetailPage() {
                       <button
                         key={result.id}
                         type="button"
-                        onClick={() => { setEditForm({ ...editForm, coverImage: result.id }); setCoverResults([]); setCoverSearch(""); }}
+                        onClick={() => {
+                          const url = result.thumbnail
+                            ? result.thumbnail.replace(/zoom=\d/, "zoom=3").replace("&edge=curl", "").replace("http:", "https:")
+                            : null;
+                          setEditForm({ ...editForm, coverImage: url ?? result.id });
+                          setCoverResults([]);
+                          setCoverSearch("");
+                        }}
                         className={`relative rounded-lg overflow-hidden border-2 transition-all ${editForm.coverImage === result.id ? "border-blue-500" : "border-transparent hover:border-blue-300"}`}
                         title={result.title}
                       >
@@ -498,7 +505,7 @@ export default function ResourceDetailPage() {
                   {(resource.coverImage || resource.isbn) ? (
                     <img
                       src={resource.coverImage
-                        ? `https://books.google.com/books/content?id=${resource.coverImage}&printsec=frontcover&img=1&zoom=3`
+                        ? (resource.coverImage.startsWith("http") ? resource.coverImage : `https://books.google.com/books/content?id=${resource.coverImage}&printsec=frontcover&img=1&zoom=3`)
                         : `https://covers.openlibrary.org/b/isbn/${resource.isbn}-L.jpg`}
                       alt={resource.title}
                       className="w-full h-full object-cover rounded-lg"
@@ -876,7 +883,7 @@ export default function ResourceDetailPage() {
             </button>
             <img
               src={resource.coverImage
-                ? `https://books.google.com/books/content?id=${resource.coverImage}&printsec=frontcover&img=1&zoom=0`
+                ? (resource.coverImage.startsWith("http") ? resource.coverImage : `https://books.google.com/books/content?id=${resource.coverImage}&printsec=frontcover&img=1&zoom=0`)
                 : `https://covers.openlibrary.org/b/isbn/${resource.isbn}-L.jpg`}
               alt={resource.title}
               className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"

@@ -39,7 +39,7 @@ interface FeaturedEntry {
 }
 
 function featuredCoverUrl(r: FeaturedEntry["resource"]) {
-  if (r.coverImage) return `https://books.google.com/books/content?id=${r.coverImage}&printsec=frontcover&img=1&zoom=2`;
+  if (r.coverImage) return r.coverImage.startsWith("http") ? r.coverImage : `https://books.google.com/books/content?id=${r.coverImage}&printsec=frontcover&img=1&zoom=2`;
   if (r.isbn) return `https://covers.openlibrary.org/b/isbn/${r.isbn}-M.jpg`;
   return null;
 }
@@ -478,7 +478,7 @@ function CatalogContent() {
                     {(r.coverImage || r.isbn) ? (
                       <img
                         src={r.coverImage
-                          ? `https://books.google.com/books/content?id=${r.coverImage}&printsec=frontcover&img=1&zoom=3`
+                          ? (r.coverImage.startsWith("http") ? r.coverImage : `https://books.google.com/books/content?id=${r.coverImage}&printsec=frontcover&img=1&zoom=3`)
                           : `https://covers.openlibrary.org/b/isbn/${r.isbn}-L.jpg`}
                         alt={r.title}
                         loading="lazy"

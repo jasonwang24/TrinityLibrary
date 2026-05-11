@@ -50,12 +50,22 @@ export default function ResourceDetailPage() {
   const [reviewText, setReviewText] = useState("");
   const [reviewHover, setReviewHover] = useState(0);
   const [showReviewForm, setShowReviewForm] = useState(false);
-  function resolveCoverUrl(coverImage: string | null | undefined, isbn?: string | null): string | null {
+  function resolveCoverUrl(coverImage: string | null | undefined, isbn?: string | null): { src: string; fallback?: string } | null {
     if (coverImage) {
-      if (coverImage.startsWith("http")) return coverImage;
-      return `/api/books/cover/${coverImage}`;
+      if (coverImage.startsWith("http")) {
+        // URL saved from picker — try to get a larger version
+        let hi = coverImage;
+        if (coverImage.includes("fife=")) {
+          hi = coverImage.replace(/fife=w\d+-h\d+/, "fife=w800-h1200").replace("&source=gbs_api", "");
+        } else if (coverImage.includes("zoom=")) {
+          hi = coverImage.replace(/zoom=\d+/, "zoom=3").replace("&edge=curl", "").replace("&source=gbs_api", "");
+        }
+        return { src: hi, fallback: hi !== coverImage ? coverImage : undefined };
+      }
+      // Legacy volume ID — use proxy
+      return { src: `/api/books/cover/${coverImage}` };
     }
-    if (isbn) return `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+    if (isbn) return { src: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg` };
     return null;
   }
 
@@ -379,7 +389,7 @@ export default function ResourceDetailPage() {
                 <div className="flex gap-3 mb-3">
                   {editForm.coverImage && (
                     <img
-                      src={resolveCoverUrl(editForm.coverImage) ?? ""}
+                      src={resolveCoverUrl(editForm.coverImage)?.src ?? ""}
                       alt="Current cover"
                       className="w-16 h-24 object-cover rounded shadow-sm shrink-0"
                     />
@@ -421,7 +431,8 @@ export default function ResourceDetailPage() {
                         key={result.id}
                         type="button"
                         onClick={() => {
-                          setEditForm({ ...editForm, coverImage: result.id });
+                          const url = result.thumbnail?.replace("http:", "https:") ?? result.id;
+                          setEditForm({ ...editForm, coverImage: url });
                           setCoverResults([]);
                           setCoverSearch("");
                         }}
@@ -510,7 +521,7 @@ export default function ResourceDetailPage() {
                 >
                   {(resource.coverImage || resource.isbn) ? (
                     <img
-                      src={resolveCoverUrl(resource.coverImage, resource.isbn) ?? ""}
+                      src={resolveCoverUrl(resource.coverImage, resource.isbn)?.src ?? ""}
                       alt={resource.title}
                       className="w-full h-full object-cover rounded-lg"
                       onLoad={(e) => {
@@ -521,6 +532,8 @@ export default function ResourceDetailPage() {
                         }
                       }}
                       onError={(e) => {
+                        const fb = resolveCoverUrl(resource.coverImage, resource.isbn)?.fallback;
+                        if (fb && e.currentTarget.src !== fb) { e.currentTarget.src = fb; return; }
                         e.currentTarget.style.display = "none";
                       }}
                     />
@@ -886,7 +899,7 @@ export default function ResourceDetailPage() {
               <X size={32} />
             </button>
             <img
-              src={resolveCoverUrl(resource.coverImage, resource.isbn) ?? ""}
+              src={resolveCoverUrl(resource.coverImage, resource.isbn)?.src ?? ""}
               alt={resource.title}
               className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}

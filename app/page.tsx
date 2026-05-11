@@ -67,7 +67,7 @@ function HomeContent() {
             Book Library
           </p>
 
-          <div className={`flex gap-3 w-full ${sessionLoading ? "opacity-0" : "opacity-100"}`}>
+          <div className={`flex flex-col sm:flex-row gap-3 w-full ${sessionLoading ? "opacity-0" : "opacity-100"}`}>
             {session ? (
               <>
                 <Link

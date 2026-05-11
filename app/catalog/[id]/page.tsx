@@ -413,7 +413,7 @@ export default function ResourceDetailPage() {
                         type="button"
                         onClick={() => {
                           const url = result.thumbnail
-                            ? result.thumbnail.replace(/zoom=\d/, "zoom=3").replace("&edge=curl", "").replace("http:", "https:")
+                            ? result.thumbnail.replace("http:", "https:")
                             : null;
                           setEditForm({ ...editForm, coverImage: url ?? result.id });
                           setCoverResults([]);

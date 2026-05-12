@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, Plus, X, Search } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, Search } from "lucide-react";
 
 export default function AddResourcePage() {
   const { data: session, status } = useSession();
@@ -14,6 +14,7 @@ export default function AddResourcePage() {
     author: "",
     isbn: "",
     description: "",
+    coverImage: "",
     type: "BOOK",
     publisher: "",
     year: "",
@@ -26,6 +27,9 @@ export default function AddResourcePage() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [isbnLookup, setIsbnLookup] = useState(false);
+  const [coverSearch, setCoverSearch] = useState("");
+  const [coverResults, setCoverResults] = useState<{ id: string; title: string; thumbnail?: string }[]>([]);
+  const [coverSearching, setCoverSearching] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated" && session.user.role !== "MANAGER") router.push("/");
@@ -87,6 +91,7 @@ export default function AddResourcePage() {
         tagIds: selectedTags,
         isbn: form.isbn.replace(/[-\s]/g, "") || undefined,
         description: form.description || undefined,
+        coverImage: form.coverImage || undefined,
         digitalUrl: form.digitalUrl || undefined,
         publisher: form.publisher || undefined,
         location: form.location ? `Shelf ${form.location}` : undefined,
@@ -100,6 +105,22 @@ export default function AddResourcePage() {
       const data = await res.json();
       setMessage(JSON.stringify(data.error));
       setMessageType("error");
+    }
+  }
+
+  async function searchGoogleBooks() {
+    if (!coverSearch.trim()) return;
+    setCoverSearching(true);
+    try {
+      const res = await fetch(`/api/books/search?q=${encodeURIComponent(coverSearch)}`);
+      const data = await res.json();
+      setCoverResults((data.items ?? []).map((item: any) => ({
+        id: item.id,
+        title: item.volumeInfo?.title ?? "",
+        thumbnail: item.volumeInfo?.imageLinks?.thumbnail?.replace("http:", "https:"),
+      })));
+    } finally {
+      setCoverSearching(false);
     }
   }
 
@@ -194,6 +215,61 @@ export default function AddResourcePage() {
                 rows={5}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cover Image</label>
+              <div className="flex gap-3 mb-3">
+                {form.coverImage && (
+                  <img src={form.coverImage} alt="Cover" className="w-16 h-24 object-cover rounded shadow-sm shrink-0" />
+                )}
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={coverSearch}
+                      onChange={(e) => setCoverSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchGoogleBooks())}
+                      placeholder="Search Google Books by title or author…"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={searchGoogleBooks}
+                      disabled={coverSearching}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60 shrink-0"
+                    >
+                      {coverSearching ? "…" : "Search"}
+                    </button>
+                  </div>
+                  {form.coverImage && (
+                    <button type="button" onClick={() => setForm({ ...form, coverImage: "" })} className="text-xs text-red-500 hover:underline">
+                      Remove cover
+                    </button>
+                  )}
+                </div>
+              </div>
+              {coverResults.length > 0 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {coverResults.map((result) => (
+                    <button
+                      key={result.id}
+                      type="button"
+                      onClick={() => { setForm({ ...form, coverImage: result.thumbnail ?? "" }); setCoverResults([]); setCoverSearch(""); }}
+                      className={`rounded-lg overflow-hidden border-2 transition-all ${form.coverImage === result.thumbnail ? "border-blue-500" : "border-transparent hover:border-blue-300"}`}
+                      title={result.title}
+                    >
+                      {result.thumbnail ? (
+                        <img src={result.thumbnail} alt={result.title} className="w-full aspect-[2/3] object-cover" />
+                      ) : (
+                        <div className="w-full aspect-[2/3] bg-gray-100 flex items-center justify-center">
+                          <BookOpen size={20} className="text-gray-300" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>

@@ -776,26 +776,44 @@ export default function ResourceDetailPage() {
                     <div className="bg-gray-50 rounded-lg p-4 mb-4">
                       <div className="mb-3">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
-                        <div className="flex gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onClick={() => setReviewRating(star)}
-                              onMouseEnter={() => setReviewHover(star)}
-                              onMouseLeave={() => setReviewHover(0)}
-                            >
-                              <Star
-                                size={24}
-                                className={`transition-colors ${
-                                  star <= (reviewHover || reviewRating)
-                                    ? "text-yellow-400 fill-yellow-400"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
+                        {(() => {
+                          const labels: Record<number, string> = {
+                            1: "Didn't enjoy it",
+                            2: "It was ok",
+                            3: "Liked it",
+                            4: "Really enjoyed it",
+                            5: "Changed my life",
+                          };
+                          const active = reviewHover || reviewRating;
+                          return (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => setReviewRating(star)}
+                                    onMouseEnter={() => setReviewHover(star)}
+                                    onMouseLeave={() => setReviewHover(0)}
+                                    title={labels[star]}
+                                  >
+                                    <Star
+                                      size={24}
+                                      className={`transition-colors ${
+                                        star <= active
+                                          ? "text-yellow-400 fill-yellow-400"
+                                          : "text-gray-300"
+                                      }`}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                              <p className={`text-xs transition-opacity ${active ? "text-yellow-600 opacity-100" : "text-gray-400 opacity-60"}`}>
+                                {active ? labels[active] : "1 = didn't enjoy it · 5 = changed my life"}
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="mb-3">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Review (optional)</label>

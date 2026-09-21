@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle, History } from "lucide-react";
+import { User, BookOpen, Clock, Calendar, AlertCircle, CheckCircle, History, Pencil, X, Check } from "lucide-react";
 
 interface Checkout {
   id: string;
@@ -40,12 +40,15 @@ interface HistoryItem {
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const [checkouts, setCheckouts] = useState<Checkout[]>([]);
   const [holds, setHolds] = useState<Hold[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [message, setMessage] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameError, setNameError] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -106,6 +109,34 @@ export default function DashboardPage() {
     setTimeout(() => setMessage(""), 3000);
   }
 
+  function startEditingName() {
+    setNameInput(session?.user.name ?? "");
+    setNameError("");
+    setIsEditingName(true);
+  }
+
+  async function handleSaveName() {
+    const trimmed = nameInput.trim();
+    if (!trimmed) {
+      setNameError("Name cannot be empty");
+      return;
+    }
+    const res = await fetch(`/api/users/${session!.user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: trimmed }),
+    });
+    if (res.ok) {
+      await update({ name: trimmed });
+      setIsEditingName(false);
+      setMessage("Name updated successfully!");
+      setTimeout(() => setMessage(""), 3000);
+    } else {
+      const data = await res.json();
+      setNameError(data.error ?? "Failed to update name");
+    }
+  }
+
   async function handleCancelHold(holdId: string) {
     const res = await fetch("/api/holds", {
       method: "DELETE",
@@ -150,7 +181,33 @@ export default function DashboardPage() {
               {session.user.name?.charAt(0) || "U"}
             </div>
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">{session.user.name}</h1>
+              {isEditingName ? (
+                <div className="mb-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="text-3xl font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent w-full max-w-xs"
+                      value={nameInput}
+                      onChange={(e) => { setNameInput(e.target.value); setNameError(""); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setIsEditingName(false); }}
+                      autoFocus
+                    />
+                    <button onClick={handleSaveName} className="text-green-600 hover:text-green-700" title="Save">
+                      <Check size={20} />
+                    </button>
+                    <button onClick={() => setIsEditingName(false)} className="text-gray-400 hover:text-gray-600" title="Cancel">
+                      <X size={20} />
+                    </button>
+                  </div>
+                  {nameError && <p className="text-sm text-red-600 mt-1">{nameError}</p>}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-3xl font-bold text-gray-900">{session.user.name}</h1>
+                  <button onClick={startEditingName} className="text-gray-400 hover:text-gray-600" title="Edit name">
+                    <Pencil size={16} />
+                  </button>
+                </div>
+              )}
               <p className="text-gray-600 mb-2">{session.user.email}</p>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">

@@ -120,7 +120,10 @@ export const authOptions: NextAuthOptions = {
       if (url.startsWith("/")) return baseUrl + url;
       return baseUrl;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
+      if (trigger === "update" && session?.name) {
+        token.name = session.name;
+      }
       if (account?.provider === "google") {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email! },

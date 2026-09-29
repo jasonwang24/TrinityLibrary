@@ -45,31 +45,32 @@ export default function AddResourcePage() {
     if (!normalizedIsbn) return;
     setIsbnLookup(true);
     try {
-      const res = await fetch(
-        `https://openlibrary.org/api/books?bibkeys=ISBN:${normalizedIsbn}&format=json&jscmd=data`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const book = data[`ISBN:${normalizedIsbn}`];
-        if (book) {
-          setForm((prev) => ({
-            ...prev,
-            title: book.title || prev.title,
-            author:
-              book.authors?.map((a: { name: string }) => a.name).join(", ") ||
-              prev.author,
-            publisher: book.publishers?.[0]?.name || prev.publisher,
-            year: book.publish_date?.match(/\d{4}/)?.[0] || prev.year,
-          }));
-          setMessage("ISBN lookup successful!");
-          setMessageType("success");
-        } else {
-          setMessage("ISBN not found in Open Library");
-          setMessageType("error");
-        }
-      } else {
+      const [isbnRes, searchRes] = await Promise.all([
+        fetch(`https://openlibrary.org/isbn/${normalizedIsbn}.json`),
+        fetch(`https://openlibrary.org/search.json?isbn=${normalizedIsbn}`),
+      ]);
+
+      const isbnData = isbnRes.ok ? await isbnRes.json() : null;
+      const searchData = searchRes.ok ? await searchRes.json() : null;
+      const searchDoc = searchData?.docs?.[0];
+
+      if (!isbnData && !searchDoc) {
         setMessage("ISBN not found in Open Library");
         setMessageType("error");
+      } else {
+        setForm((prev) => ({
+          ...prev,
+          title: isbnData?.title || searchDoc?.title || prev.title,
+          author:
+            searchDoc?.author_name?.join(", ") || prev.author,
+          publisher: isbnData?.publishers?.[0] || prev.publisher,
+          year:
+            isbnData?.publish_date?.match(/\d{4}/)?.[0] ||
+            String(searchDoc?.first_publish_year ?? "") ||
+            prev.year,
+        }));
+        setMessage("ISBN lookup successful!");
+        setMessageType("success");
       }
     } catch {
       setMessage("ISBN lookup failed");
